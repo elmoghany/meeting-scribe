@@ -109,6 +109,17 @@ function renderAnnotations() {
   }
 }
 
+async function saveSpeakerNames() {
+  const mapping = {};
+  $("speakers").querySelectorAll(".spk-in").forEach((i) => {
+    const o = i.dataset.old, n = i.value.trim();
+    if (n && n !== o) mapping[o] = n;
+  });
+  if (!Object.keys(mapping).length) return;
+  await post(`/api/meetings/${currentMeeting}/rename-speakers`, { mapping });
+  openMeeting(currentMeeting);
+}
+
 $("btn-comment").onclick = async () => {
   const t = $("comment-input").value.trim();
   if (!t || !currentMeeting) return;
@@ -208,6 +219,23 @@ async function openMeeting(id) {
         sm.decisions.map((p) => `<div class="kp">• ${escapeHtml(p)}</div>`).join("");
     }
   } else sd.innerHTML = `<p class="muted">No summary yet (still processing?).</p>`;
+
+  // speakers (rename inline — reuses /rename-speakers)
+  const sp = $("speakers"); sp.innerHTML = "";
+  const names = [...new Set(d.segments.map((s) => s.speaker))];
+  if (names.length) {
+    const wrap = document.createElement("div"); wrap.className = "spk-wrap";
+    names.forEach((n) => {
+      const inp = document.createElement("input");
+      inp.className = "spk-in"; inp.value = n; inp.dataset.old = n;
+      inp.addEventListener("keydown", (e) => { if (e.key === "Enter") saveSpeakerNames(); });
+      wrap.appendChild(inp);
+    });
+    sp.appendChild(wrap);
+    const btn = document.createElement("button");
+    btn.className = "ghost"; btn.textContent = "Save names"; btn.onclick = saveSpeakerNames;
+    sp.appendChild(btn);
+  } else sp.innerHTML = `<p class="muted">No speakers yet.</p>`;
 
   // action items
   const al = $("actions"); al.innerHTML = "";

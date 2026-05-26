@@ -70,6 +70,8 @@ ul { list-style: none; padding: 0; margin: 0; }
   padding: 6px 0; border-bottom: 1px solid #1c2029; font-size: 13.5px; }
 .annot-del { color: var(--muted); cursor: pointer; flex: 0 0 auto; }
 .annot-del:hover { color: var(--danger); }
+.spk-wrap { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+.spk-in { width: auto; flex: 0 0 auto; min-width: 120px; margin: 0; padding: 6px 9px; font-size: 13px; }
 #actions li { padding: 6px 0; }
 #actions input { width: auto; margin-right: 8px; }
 .kp { margin: 4px 0; }
