@@ -65,7 +65,7 @@ async def _startup() -> None:
 
     # Auto-record scheduled Zoom meetings, if configured.
     from ..integrations import zoom
-    if s.autostart_enabled and zoom.is_configured():
+    if s.autostart_enabled and (zoom.is_configured() or s.calendar_ics):
         from ..scheduler import AutoRecorder
         _auto = AutoRecorder(
             start_fn=lambda title, platform: _start_recording(title, platform).id,

@@ -17,7 +17,7 @@ from datetime import datetime
 from typing import Callable
 
 from .config import get_settings
-from .integrations import zoom
+from .integrations import ics, zoom
 
 # start_fn(title, platform) -> meeting_id ; stop_fn() ; is_recording_fn() -> bool
 StartFn = Callable[[str, str], str]
@@ -66,17 +66,50 @@ class AutoRecorder(threading.Thread):
                 self._stop()
             self._active = None
 
-        if not zoom.connected():
-            return
-        for m in zoom.upcoming_meetings():
-            if not m.get("start_time") or m["id"] in self._started_ids:
+        for c in self._candidates(s, now):
+            if c["id"] in self._started_ids:
                 continue
-            st = parse_zoom_time(m["start_time"])
             # start if the meeting begins within the lead window (or just began)
-            if -s.autostart_buffer_sec <= (st - now) <= s.autostart_lead_sec:
+            if -s.autostart_buffer_sec <= (c["start"] - now) <= s.autostart_lead_sec:
                 if not self._rec():
-                    self._start(m["topic"], "zoom")
-                    self._started_ids.add(m["id"])
-                    dur = (m.get("duration") or 60) * 60
-                    self._active = (m["id"], now + dur + s.autostart_buffer_sec)
+                    self._start(c["topic"], c["platform"])
+                    self._started_ids.add(c["id"])
+                    self._active = (c["id"], now + c["dur"] * 60 + s.autostart_buffer_sec)
                 break
+
+    def _candidates(self, s, now: float) -> list[dict]:
+        """Gather upcoming meetings from all configured calendar sources."""
+        out: list[dict] = []
+        try:
+            if zoom.is_configured() and zoom.connected():
+                for m in zoom.upcoming_meetings():
+                    if m.get("start_time"):
+                        out.append({"id": "zoom:" + m["id"], "topic": m["topic"],
+                                    "platform": "zoom",
+                                    "start": parse_zoom_time(m["start_time"]),
+                                    "dur": (m.get("duration") or 60)})
+        except Exception as e:
+            self.last_error = f"zoom: {e}"
+        text = self._load_ics(s)
+        if text:
+            try:
+                for e in ics.upcoming_events(text, horizon_sec=86400, now=now):
+                    out.append({"id": f"ics:{e.summary}:{int(e.start)}", "topic": e.summary,
+                                "platform": "other", "start": e.start, "dur": 60})
+            except Exception as e:
+                self.last_error = f"ics-parse: {e}"
+        return out
+
+    def _load_ics(self, s) -> str | None:
+        src = s.calendar_ics
+        if not src:
+            return None
+        try:
+            if src.startswith("http"):
+                import httpx
+                return httpx.get(src, timeout=15, follow_redirects=True).text
+            from pathlib import Path
+            return Path(src).read_text(encoding="utf-8")
+        except Exception as e:
+            self.last_error = f"ics-load: {e}"
+            return None

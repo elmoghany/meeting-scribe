@@ -69,6 +69,9 @@ class Settings:
         self.zoom_redirect_uri = os.getenv(
             "ZOOM_REDIRECT_URI", "http://localhost:8765/oauth/zoom/callback")
 
+        # .ics calendar (URL or local path) for key-free auto-record (any calendar)
+        self.calendar_ics = os.getenv("CALENDAR_ICS_URL") or os.getenv("CALENDAR_ICS_PATH") or None
+
         # auto-record scheduled meetings
         self.autostart_enabled = _bool("MEETINGSCRIBE_AUTOSTART", True)
         self.autostart_lead_sec = int(os.getenv("MEETINGSCRIBE_AUTOSTART_LEAD_SEC", "120"))

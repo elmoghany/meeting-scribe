@@ -15,6 +15,9 @@ class _FakeZoom:
         self._m = meetings
         self.connected_flag = True
 
+    def is_configured(self):
+        return True
+
     def connected(self):
         return self.connected_flag
 
@@ -77,3 +80,18 @@ def test_auto_stop_after_scheduled_end(monkeypatch):
     ar._tick(get_settings())
     assert calls["stop"] == 1
     assert ar._active is None
+
+
+def test_ics_source_triggers_recording(monkeypatch):
+    import time as _t
+    from datetime import datetime, timezone
+    ar, calls = _auto(monkeypatch, [])           # zoom fake, no zoom meetings
+    ar._fake = monkeypatch  # keep ref
+    monkeypatch.setattr(scheduler.zoom, "connected_flag", False, raising=False)
+    # an .ics event starting ~30s from now
+    start = datetime.fromtimestamp(_t.time() + 30, timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    cal = (f"BEGIN:VCALENDAR\nBEGIN:VEVENT\nSUMMARY:Daily Standup\n"
+           f"DTSTART:{start}\nEND:VEVENT\nEND:VCALENDAR\n")
+    monkeypatch.setattr(ar, "_load_ics", lambda s: cal)
+    ar._tick(get_settings())
+    assert calls["start"] == [("Daily Standup", "other")]
