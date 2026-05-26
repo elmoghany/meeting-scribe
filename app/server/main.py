@@ -186,8 +186,18 @@ def devices():
 # meetings
 # --------------------------------------------------------------------------- #
 @app.get("/api/meetings")
-def meetings():
-    return [m.to_dict() for m in db.list_meetings()]
+def meetings(tag: str | None = None):
+    out = []
+    for m in db.list_meetings(tag=tag):
+        d = m.to_dict()
+        d["tags"] = db.get_tags(m.id)
+        out.append(d)
+    return out
+
+
+@app.get("/api/tags")
+def tags():
+    return db.all_tags()
 
 
 @app.get("/api/meetings/{meeting_id}")
@@ -202,6 +212,7 @@ def meeting_detail(meeting_id: str):
         "summary": summary.to_dict() if summary else None,
         "action_items": [a.to_dict() for a in db.get_action_items(meeting_id)],
         "segments": [s.to_dict() for s in segs],
+        "tags": db.get_tags(meeting_id),
     }
 
 
@@ -265,6 +276,18 @@ def meeting_analytics(meeting_id: str):
 def meeting_delete(meeting_id: str):
     db.delete_meeting(meeting_id)
     return {"deleted": meeting_id}
+
+
+@app.post("/api/meetings/{meeting_id}/tags")
+def add_meeting_tag(meeting_id: str, req: CommentReq):
+    db.add_tag(meeting_id, req.text)
+    return {"tags": db.get_tags(meeting_id)}
+
+
+@app.delete("/api/meetings/{meeting_id}/tags/{tag}")
+def remove_meeting_tag(meeting_id: str, tag: str):
+    db.remove_tag(meeting_id, tag)
+    return {"tags": db.get_tags(meeting_id)}
 
 
 @app.post("/api/meetings/{meeting_id}/rename-speakers")

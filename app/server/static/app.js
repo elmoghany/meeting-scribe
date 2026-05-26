@@ -13,6 +13,15 @@ let currentMeeting = null;
 let liveMeetingId = null;
 let highlightedIds = new Set();
 let annotations = [];
+let activeTagFilter = null;
+
+function chip(label, active, onclick) {
+  const s = document.createElement("span");
+  s.className = "chip" + (active ? " active" : "");
+  s.textContent = label;
+  if (onclick) s.onclick = onclick;
+  return s;
+}
 
 // ---------- live websocket ----------
 function connectWS() {
@@ -179,15 +188,26 @@ $("btn-stop").onclick = async () => {
 
 // ---------- meetings list + detail ----------
 async function refreshMeetings() {
-  const list = await api("/api/meetings");
+  // tag filter bar
+  const tags = await api("/api/tags").catch(() => []);
+  const tf = $("tag-filter"); tf.innerHTML = "";
+  if (tags.length) {
+    tf.appendChild(chip("all", !activeTagFilter, () => { activeTagFilter = null; refreshMeetings(); }));
+    tags.forEach((t) => tf.appendChild(
+      chip(`${t.tag} ${t.count}`, activeTagFilter === t.tag,
+           () => { activeTagFilter = activeTagFilter === t.tag ? null : t.tag; refreshMeetings(); })));
+  }
+  const q = activeTagFilter ? "?tag=" + encodeURIComponent(activeTagFilter) : "";
+  const list = await api("/api/meetings" + q);
   const ul = $("meeting-list"); ul.innerHTML = "";
   for (const m of list) {
     const li = document.createElement("li");
     if (m.id === currentMeeting) li.className = "active";
     const when = m.started_at ? new Date(m.started_at * 1000).toLocaleString() : "";
+    const tagHtml = (m.tags || []).map((t) => `<span class="badge tagb">${escapeHtml(t)}</span>`).join(" ");
     li.innerHTML = `<div class="mtitle">${escapeHtml(m.title)}</div>` +
       `<div class="muted">${when} · <span class="badge">${m.platform}</span> ` +
-      `<span class="badge">${m.status}</span></div>`;
+      `<span class="badge">${m.status}</span> ${tagHtml}</div>`;
     li.onclick = () => openMeeting(m.id);
     ul.appendChild(li);
   }
@@ -205,6 +225,30 @@ async function openMeeting(id) {
   const mins = (d.meeting.duration_sec || 0) / 60;
   $("detail-meta").textContent =
     `${d.meeting.platform} · ${d.meeting.status} · ${mins.toFixed(0)} min · ${d.meeting.language || ""}`;
+
+  // tags
+  const tg = $("tags"); tg.innerHTML = "";
+  (d.tags || []).forEach((t) => {
+    const c = chip(t, false);
+    c.classList.add("removable");
+    const x = document.createElement("span");
+    x.className = "chip-x"; x.textContent = "×";
+    x.onclick = async (e) => {
+      e.stopPropagation();
+      await api(`/api/meetings/${id}/tags/${encodeURIComponent(t)}`, { method: "DELETE" });
+      openMeeting(id); refreshMeetings();
+    };
+    c.appendChild(x); tg.appendChild(c);
+  });
+  const addTag = document.createElement("input");
+  addTag.className = "tag-add"; addTag.placeholder = "+ tag";
+  addTag.addEventListener("keydown", async (e) => {
+    if (e.key === "Enter" && addTag.value.trim()) {
+      await post(`/api/meetings/${id}/tags`, { text: addTag.value.trim() });
+      openMeeting(id); refreshMeetings();
+    }
+  });
+  tg.appendChild(addTag);
 
   // summary
   const sm = d.summary; const sd = $("summary"); sd.innerHTML = "";

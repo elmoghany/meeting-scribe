@@ -72,6 +72,16 @@ ul { list-style: none; padding: 0; margin: 0; }
 .annot-del:hover { color: var(--danger); }
 .spk-wrap { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
 .spk-in { width: auto; flex: 0 0 auto; min-width: 120px; margin: 0; padding: 6px 9px; font-size: 13px; }
+.tagbar { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 10px; align-items: center; }
+.chip { font-size: 12px; padding: 3px 10px; border-radius: 999px; border: 1px solid var(--line);
+  color: var(--muted); cursor: pointer; background: #0f1218; white-space: nowrap; }
+.chip:hover { border-color: var(--accent); }
+.chip.active { background: var(--accent); color: #0b1020; border-color: var(--accent); font-weight: 600; }
+.chip.removable { cursor: default; color: var(--fg); }
+.chip-x { margin-left: 6px; cursor: pointer; color: var(--muted); }
+.chip-x:hover { color: var(--danger); }
+.tag-add { width: 70px; padding: 3px 8px; font-size: 12px; margin: 0; border-radius: 999px; }
+.badge.tagb { color: var(--accent2); border-color: var(--accent2); }
 #actions li { padding: 6px 0; }
 #actions input { width: auto; margin-right: 8px; }
 .kp { margin: 4px 0; }

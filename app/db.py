@@ -67,6 +67,13 @@ CREATE TABLE IF NOT EXISTS annotations (
 );
 CREATE INDEX IF NOT EXISTS idx_annot_meeting ON annotations(meeting_id);
 
+CREATE TABLE IF NOT EXISTS meeting_tags (
+    meeting_id  TEXT NOT NULL REFERENCES meetings(id) ON DELETE CASCADE,
+    tag         TEXT NOT NULL,
+    PRIMARY KEY (meeting_id, tag)
+);
+CREATE INDEX IF NOT EXISTS idx_tags_tag ON meeting_tags(tag);
+
 -- Full-text search over transcript text, kept in sync via triggers.
 CREATE VIRTUAL TABLE IF NOT EXISTS segments_fts USING fts5(
     text, speaker UNINDEXED, meeting_id UNINDEXED,
@@ -154,12 +161,48 @@ def get_meeting(meeting_id: str) -> Meeting | None:
     return _row_to_meeting(row) if row else None
 
 
-def list_meetings(limit: int = 100) -> list[Meeting]:
+def list_meetings(limit: int = 100, tag: str | None = None) -> list[Meeting]:
+    with cursor() as c:
+        if tag:
+            rows = c.execute(
+                "SELECT m.* FROM meetings m JOIN meeting_tags t ON t.meeting_id = m.id"
+                " WHERE t.tag = ? ORDER BY m.started_at DESC LIMIT ?", (tag, limit)
+            ).fetchall()
+        else:
+            rows = c.execute(
+                "SELECT * FROM meetings ORDER BY started_at DESC LIMIT ?", (limit,)
+            ).fetchall()
+    return [_row_to_meeting(r) for r in rows]
+
+
+def add_tag(meeting_id: str, tag: str) -> None:
+    tag = tag.strip().lower()
+    if not tag:
+        return
+    with cursor() as c:
+        c.execute("INSERT OR IGNORE INTO meeting_tags(meeting_id, tag) VALUES (?,?)",
+                  (meeting_id, tag))
+
+
+def remove_tag(meeting_id: str, tag: str) -> None:
+    with cursor() as c:
+        c.execute("DELETE FROM meeting_tags WHERE meeting_id=? AND tag=?",
+                  (meeting_id, tag.strip().lower()))
+
+
+def get_tags(meeting_id: str) -> list[str]:
+    with cursor() as c:
+        rows = c.execute("SELECT tag FROM meeting_tags WHERE meeting_id=? ORDER BY tag",
+                         (meeting_id,)).fetchall()
+    return [r["tag"] for r in rows]
+
+
+def all_tags() -> list[dict]:
     with cursor() as c:
         rows = c.execute(
-            "SELECT * FROM meetings ORDER BY started_at DESC LIMIT ?", (limit,)
+            "SELECT tag, COUNT(*) n FROM meeting_tags GROUP BY tag ORDER BY n DESC, tag"
         ).fetchall()
-    return [_row_to_meeting(r) for r in rows]
+    return [{"tag": r["tag"], "count": r["n"]} for r in rows]
 
 
 def delete_meeting(meeting_id: str) -> None:

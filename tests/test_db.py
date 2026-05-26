@@ -87,3 +87,24 @@ def test_annotations_cascade_on_meeting_delete():
     db.add_annotation(mid, kind="comment", text="hi")
     db.delete_meeting(mid)
     assert db.list_annotations(mid) == []
+
+
+def test_tags_add_filter_remove():
+    a = _mk("m-tag-a")
+    b = _mk("m-tag-b")
+    db.add_tag(a, "Standup")    # normalized to lowercase
+    db.add_tag(a, "team")
+    db.add_tag(b, "team")
+    db.add_tag(a, "team")       # duplicate ignored
+    assert db.get_tags(a) == ["standup", "team"]
+    # filter meetings by tag
+    ids = {m.id for m in db.list_meetings(tag="team")}
+    assert a in ids and b in ids
+    ids = {m.id for m in db.list_meetings(tag="standup")}
+    assert a in ids and b not in ids
+    # tag counts
+    counts = {t["tag"]: t["count"] for t in db.all_tags()}
+    assert counts.get("team") == 2 and counts.get("standup") == 1
+    # remove
+    db.remove_tag(a, "team")
+    assert db.get_tags(a) == ["standup"]
