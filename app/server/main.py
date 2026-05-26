@@ -105,6 +105,10 @@ class CommentReq(BaseModel):
     author: str | None = None
 
 
+class TitleReq(BaseModel):
+    title: str
+
+
 # --------------------------------------------------------------------------- #
 # recording control
 # --------------------------------------------------------------------------- #
@@ -272,9 +276,34 @@ def meeting_analytics(meeting_id: str):
     return exporters.talk_time(segs)
 
 
+@app.post("/api/meetings/{meeting_id}/title")
+def set_title(meeting_id: str, req: TitleReq):
+    if not db.get_meeting(meeting_id):
+        raise HTTPException(404, "Meeting not found")
+    db.update_meeting(meeting_id, title=req.title.strip() or "Untitled meeting")
+    return {"title": db.get_meeting(meeting_id).title}
+
+
+@app.post("/api/meetings/{meeting_id}/delete-audio")
+def delete_audio(meeting_id: str):
+    """Free disk by deleting the WAV recordings; keeps transcript & notes."""
+    rec = get_settings().recordings_dir / meeting_id
+    removed, freed = [], 0
+    if rec.exists():
+        for p in rec.glob("*.wav"):
+            freed += p.stat().st_size
+            p.unlink()
+            removed.append(p.name)
+    return {"removed": removed, "freed_mb": round(freed / 1e6, 1)}
+
+
 @app.delete("/api/meetings/{meeting_id}")
 def meeting_delete(meeting_id: str):
     db.delete_meeting(meeting_id)
+    import shutil
+    rec = get_settings().recordings_dir / meeting_id
+    if rec.exists():
+        shutil.rmtree(rec, ignore_errors=True)
     return {"deleted": meeting_id}
 
 

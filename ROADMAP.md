@@ -33,8 +33,9 @@ Tracking the autonomous feature-parity work against Otter.ai. Everything stays
 7. ✅ Live summary + live action items during the call (rolling extractive notes)
 8. ✅ Outbound webhook on finish (key-free Slack/Discord/Notion/Zapier bridge)
 
+9. ✅ Edit meeting title (dbl-click) + storage management (free audio, keep notes)
+
 ## Next
-9. ⬜ Edit meeting title + storage management (delete audio)
 10. ⬜ "All action items" cross-meeting view
 11. ⬜ Persistent speaker profiles (name once, matched across meetings via embeddings)
 12. ⬜ Slide/screenshot capture during screen-share segments

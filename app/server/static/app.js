@@ -350,6 +350,19 @@ $("export-fmt").onchange = (e) => {
   window.open(`/api/meetings/${currentMeeting}/export?fmt=${fmt}`, "_blank");
   e.target.value = "";
 };
+$("detail-title").title = "Double-click to rename";
+$("detail-title").ondblclick = async () => {
+  const nt = prompt("Meeting title:", $("detail-title").textContent);
+  if (nt && nt.trim()) {
+    await post(`/api/meetings/${currentMeeting}/title`, { title: nt.trim() });
+    openMeeting(currentMeeting); refreshMeetings();
+  }
+};
+$("btn-free-audio").onclick = async () => {
+  if (!confirm("Delete the audio recordings for this meeting? Notes are kept.")) return;
+  const r = await post(`/api/meetings/${currentMeeting}/delete-audio`);
+  alert(`Freed ${r.freed_mb} MB (${r.removed.length} file(s)).`);
+};
 $("btn-reprocess").onclick = () => post(`/api/meetings/${currentMeeting}/reprocess`);
 $("btn-delete").onclick = async () => {
   if (!confirm("Delete this meeting?")) return;
