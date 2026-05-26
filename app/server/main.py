@@ -207,6 +207,41 @@ def meeting_markdown(meeting_id: str):
     return PlainTextResponse(export_markdown(meeting_id).read_text(encoding="utf-8"))
 
 
+@app.get("/api/meetings/{meeting_id}/export")
+def meeting_export(meeting_id: str, fmt: str = "txt"):
+    """Export the transcript/notes. fmt: srt | vtt | txt | json | md."""
+    if not db.get_meeting(meeting_id):
+        raise HTTPException(404, "Meeting not found")
+    fmt = fmt.lower()
+    if fmt == "md":
+        from ..pipeline.process import export_markdown
+        body = export_markdown(meeting_id).read_text(encoding="utf-8")
+        media = "text/markdown"
+    else:
+        from ..pipeline import exporters
+        segs = db.get_segments(meeting_id, source="batch") or db.get_segments(meeting_id)
+        if fmt == "json":
+            body = exporters.to_json(db.get_meeting(meeting_id), db.get_summary(meeting_id),
+                                     db.get_action_items(meeting_id), segs)
+            media = "application/json"
+        elif fmt in exporters.EXPORTERS:
+            media, fn = exporters.EXPORTERS[fmt]
+            body = fn(segs)
+        else:
+            raise HTTPException(400, f"Unknown format '{fmt}'")
+    return PlainTextResponse(body, media_type=media, headers={
+        "Content-Disposition": f'attachment; filename="{meeting_id}.{fmt}"'})
+
+
+@app.get("/api/meetings/{meeting_id}/analytics")
+def meeting_analytics(meeting_id: str):
+    if not db.get_meeting(meeting_id):
+        raise HTTPException(404, "Meeting not found")
+    from ..pipeline import exporters
+    segs = db.get_segments(meeting_id, source="batch") or db.get_segments(meeting_id)
+    return exporters.talk_time(segs)
+
+
 @app.delete("/api/meetings/{meeting_id}")
 def meeting_delete(meeting_id: str):
     db.delete_meeting(meeting_id)

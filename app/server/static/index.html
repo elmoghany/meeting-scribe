@@ -56,7 +56,14 @@
         <div class="row between">
           <h2 id="detail-title">Meeting</h2>
           <div>
-            <button id="btn-md" class="ghost">Markdown</button>
+            <select id="export-fmt" class="ghost" title="Export / download">
+              <option value="">Export…</option>
+              <option value="md">Markdown (.md)</option>
+              <option value="txt">Plain text (.txt)</option>
+              <option value="srt">Subtitles (.srt)</option>
+              <option value="vtt">WebVTT (.vtt)</option>
+              <option value="json">JSON (.json)</option>
+            </select>
             <button id="btn-reprocess" class="ghost">Reprocess</button>
             <button id="btn-delete" class="ghost danger-text">Delete</button>
           </div>
@@ -66,6 +73,9 @@
         <div id="summary"></div>
         <h3>Action items</h3>
         <ul id="actions"></ul>
+
+        <h3>Talk time</h3>
+        <div id="analytics"></div>
 
         <h3>Ask this meeting</h3>
         <div class="row">

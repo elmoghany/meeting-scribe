@@ -183,13 +183,20 @@ def label_speakers(wav_path: str, segments: list[Segment]) -> list[Segment]:
     Returns the same segments (mutated). Raises on backend failure so the caller
     can fall back to a generic 'Others' label.
     """
+    import sys
+
     from .assemble import assign_speakers
 
     backend = get_settings().diarizer
     if backend == "pyannote":
-        turns = diarize_pyannote(wav_path, hf_token=get_settings().hf_token)
-        return assign_speakers(segments, turns)
-    # default: key-free resemblyzer
+        try:
+            turns = diarize_pyannote(wav_path, hf_token=get_settings().hf_token)
+            return assign_speakers(segments, turns)
+        except Exception as e:
+            # pyannote weights gated/unavailable → degrade to key-free resemblyzer,
+            # which still attempts real multi-speaker separation.
+            print(f"[diarize] pyannote unavailable ({type(e).__name__}); "
+                  f"falling back to resemblyzer.", file=sys.stderr)
     labels = diarize_segments(wav_path, segments)
     for seg, lab in zip(segments, labels):
         seg.speaker = lab

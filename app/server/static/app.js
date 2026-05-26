@@ -138,16 +138,34 @@ async function openMeeting(id) {
   }
   if (!d.action_items.length) al.innerHTML = `<li class="muted">None detected.</li>`;
 
+  // analytics (talk time)
+  const an = $("analytics"); an.innerHTML = "";
+  try {
+    const a = await api(`/api/meetings/${id}/analytics`);
+    if (a.speakers && a.speakers.length) {
+      for (const s of a.speakers) {
+        const row = document.createElement("div");
+        row.className = "tt-row";
+        row.innerHTML =
+          `<span class="tt-name">${escapeHtml(s.speaker)}</span>` +
+          `<span class="tt-bar"><span style="width:${s.time_pct}%"></span></span>` +
+          `<span class="tt-val">${s.time_pct}% · ${Math.round(s.seconds)}s · ${s.words}w</span>`;
+        an.appendChild(row);
+      }
+    } else an.innerHTML = `<p class="muted">No data.</p>`;
+  } catch { an.innerHTML = ""; }
+
   // transcript
   const t = $("transcript"); t.innerHTML = "";
   for (const s of d.segments) t.appendChild(segEl(s));
   $("chat-answer").innerHTML = "";
 }
 
-$("btn-md").onclick = async () => {
-  const md = await api(`/api/meetings/${currentMeeting}/markdown`);
-  const w = window.open("", "_blank");
-  w.document.write("<pre>" + escapeHtml(md) + "</pre>");
+$("export-fmt").onchange = (e) => {
+  const fmt = e.target.value;
+  if (!fmt || !currentMeeting) return;
+  window.open(`/api/meetings/${currentMeeting}/export?fmt=${fmt}`, "_blank");
+  e.target.value = "";
 };
 $("btn-reprocess").onclick = () => post(`/api/meetings/${currentMeeting}/reprocess`);
 $("btn-delete").onclick = async () => {

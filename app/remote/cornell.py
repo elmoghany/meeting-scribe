@@ -36,6 +36,8 @@ conda activate mscribe
 cd {remote_dir}
 export HUGGINGFACE_TOKEN="{hf_token}"
 export MEETINGSCRIBE_LLM_BACKEND="{llm_backend}"
+export MEETINGSCRIBE_DIARIZER="{diarizer}"
+export MEETINGSCRIBE_PYANNOTE_MODEL="{pyannote_model}"
 export MEETINGSCRIBE_DATA_DIR="{remote_dir}/data"
 python -m app.remote.worker "{remote_dir}/recordings/{mid}" \\
     "{remote_dir}/out/{mid}/result.json" "{batch_model}"
@@ -94,6 +96,9 @@ def submit_and_fetch(meeting_id: str, audio_dir: str, batch_model: str | None = 
             time=os.getenv("CORNELL_TIME", "2:00:00"),
             hf_token=s.hf_token or "",
             llm_backend=os.getenv("CORNELL_LLM_BACKEND", "transformers"),
+            diarizer=os.getenv("CORNELL_DIARIZER", s.diarizer),
+            pyannote_model=os.getenv("MEETINGSCRIBE_PYANNOTE_MODEL",
+                                     "pyannote/speaker-diarization-community-1"),
             batch_model=batch_model or s.batch_model,
         )
         rscript = posixpath.join(rout, "job.sbatch")
