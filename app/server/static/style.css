@@ -89,6 +89,13 @@ ul { list-style: none; padding: 0; margin: 0; }
 .chip-x:hover { color: var(--danger); }
 .tag-add { width: 70px; padding: 3px 8px; font-size: 12px; margin: 0; border-radius: 999px; }
 .badge.tagb { color: var(--accent2); border-color: var(--accent2); }
+.ai-toggle { font-size: 11px; color: var(--accent); cursor: pointer; text-transform: none; letter-spacing: 0; }
+.ai-row { display: flex; align-items: baseline; gap: 7px; padding: 5px 0; border-bottom: 1px solid #1c2029; font-size: 13px; }
+.ai-row input { width: auto; margin: 0; flex: 0 0 auto; }
+.ai-txt { flex: 1; }
+.ai-meta { color: var(--muted); font-size: 11px; cursor: pointer; flex: 0 0 auto; max-width: 42%;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ai-meta:hover { color: var(--accent); }
 #actions li { padding: 6px 0; }
 #actions input { width: auto; margin-right: 8px; }
 .kp { margin: 4px 0; }

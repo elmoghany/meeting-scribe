@@ -355,6 +355,12 @@ def toggle_action(item_id: int, done: bool = True):
     return {"id": item_id, "done": done}
 
 
+@app.get("/api/action-items")
+def all_action_items(open_only: bool = False, owner: str | None = None):
+    """Every action item across all meetings, with meeting context."""
+    return db.all_action_items(open_only=open_only, owner=owner)
+
+
 # --------------------------------------------------------------------------- #
 # highlights + comments
 # --------------------------------------------------------------------------- #

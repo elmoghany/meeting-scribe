@@ -89,6 +89,29 @@ def test_annotations_cascade_on_meeting_delete():
     assert db.list_annotations(mid) == []
 
 
+def test_all_action_items_across_meetings():
+    a = _mk("m-ai-a")
+    b = _mk("m-ai-b")
+    db.save_action_items(a, [ActionItem(text="ship v2", owner="Sam"),
+                             ActionItem(text="email vendor", owner="Me")])
+    db.save_action_items(b, [ActionItem(text="book room", owner="Me")])
+    # mark one done
+    items_a = db.get_action_items(a)
+    db.set_action_done(items_a[0].id, True)
+
+    all_items = db.all_action_items()
+    assert {i["text"] for i in all_items} >= {"ship v2", "email vendor", "book room"}
+    # each carries meeting context
+    assert all("meeting_title" in i and "meeting_id" in i for i in all_items)
+    # open_only excludes the done one
+    open_items = db.all_action_items(open_only=True)
+    assert "ship v2" not in {i["text"] for i in open_items}
+    # owner filter (DB is shared across tests, so check subset + owner correctness)
+    me = db.all_action_items(owner="Me")
+    assert {i["text"] for i in me} >= {"email vendor", "book room"}
+    assert all(i["owner"] == "Me" for i in me)
+
+
 def test_tags_add_filter_remove():
     a = _mk("m-tag-a")
     b = _mk("m-tag-b")

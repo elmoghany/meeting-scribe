@@ -318,6 +318,28 @@ def set_action_done(item_id: int, done: bool) -> None:
         c.execute("UPDATE action_items SET done = ? WHERE id = ?", (int(done), item_id))
 
 
+def all_action_items(open_only: bool = False, owner: str | None = None,
+                     limit: int = 500) -> list[dict]:
+    """Action items across every meeting, with meeting context — for the global
+    task view. Open (undone) items first, then by recency."""
+    q = ("SELECT a.id, a.text, a.owner, a.due, a.done, a.meeting_id,"
+         "       m.title AS meeting_title, m.started_at"
+         " FROM action_items a JOIN meetings m ON m.id = a.meeting_id")
+    conds, args = [], []
+    if open_only:
+        conds.append("a.done = 0")
+    if owner:
+        conds.append("a.owner = ?")
+        args.append(owner)
+    if conds:
+        q += " WHERE " + " AND ".join(conds)
+    q += " ORDER BY a.done ASC, m.started_at DESC LIMIT ?"
+    args.append(limit)
+    with cursor() as c:
+        rows = c.execute(q, args).fetchall()
+    return [dict(r) for r in rows]
+
+
 # --------------------------------------------------------------------------- #
 # annotations (highlights + comments)
 # --------------------------------------------------------------------------- #

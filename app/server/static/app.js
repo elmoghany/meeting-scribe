@@ -54,8 +54,8 @@ function handleEvent(ev) {
         `Done: ${ev.segments} segments, ${ev.action_items} action items (${ev.backend}).`;
       $("live-flag").textContent = "";
       refreshMeetings();
-      if (currentMeeting === ev.meeting_id) openMeeting(ev.meeting_id);
-      else openMeeting(ev.meeting_id);
+      renderAllActions();
+      openMeeting(ev.meeting_id);
       break;
     case "error":
       $("rec-status").textContent = "Error: " + ev.message; break;
@@ -307,7 +307,7 @@ async function openMeeting(id) {
     const li = document.createElement("li");
     const cb = document.createElement("input");
     cb.type = "checkbox"; cb.checked = a.done;
-    cb.onchange = () => post(`/api/action/${a.id}?done=${cb.checked}`);
+    cb.onchange = async () => { await post(`/api/action/${a.id}?done=${cb.checked}`); renderAllActions(); };
     const meta = [a.owner, a.due].filter(Boolean).join(" · ");
     li.appendChild(cb);
     li.insertAdjacentHTML("beforeend",
@@ -404,6 +404,40 @@ $("search").addEventListener("input", (e) => {
   }, 250);
 });
 
+let aiOpenOnly = true;
+async function renderAllActions() {
+  const box = $("all-actions");
+  const items = await api("/api/action-items?open_only=" + aiOpenOnly).catch(() => []);
+  box.innerHTML = "";
+  if (!items.length) {
+    box.innerHTML = `<p class="muted">No ${aiOpenOnly ? "open " : ""}action items.</p>`;
+    return;
+  }
+  for (const a of items) {
+    const row = document.createElement("div");
+    row.className = "ai-row";
+    const cb = document.createElement("input");
+    cb.type = "checkbox"; cb.checked = !!a.done;
+    cb.onchange = async () => { await post(`/api/action/${a.id}?done=${cb.checked}`); renderAllActions(); };
+    const txt = document.createElement("span");
+    txt.className = "ai-txt"; txt.textContent = a.text;
+    if (a.done) txt.style.textDecoration = "line-through";
+    const meta = document.createElement("span");
+    meta.className = "ai-meta";
+    meta.textContent = a.meeting_title + (a.owner ? " · " + a.owner : "") + (a.due ? " · " + a.due : "");
+    meta.title = "Open meeting";
+    meta.onclick = () => openMeeting(a.meeting_id);
+    row.appendChild(cb); row.appendChild(txt); row.appendChild(meta);
+    box.appendChild(row);
+  }
+}
+$("ai-toggle").onclick = () => {
+  aiOpenOnly = !aiOpenOnly;
+  $("ai-toggle").textContent = aiOpenOnly ? "(open only)" : "(all)";
+  renderAllActions();
+};
+
 $("player").addEventListener("timeupdate", highlightPlaying);
 connectWS();
 refreshMeetings();
+renderAllActions();
