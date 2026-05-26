@@ -132,6 +132,7 @@
     <div class="card"><div class="emoji">⚡</div><h3>Live notes</h3><p>A rolling summary and detected action items appear <em>while the meeting is still going</em> — catch up at a glance.</p></div>
     <div class="card"><div class="emoji">🗂️</div><h3>Tags & folders</h3><p>Organize meetings with tags and filter your whole history in one click.</p></div>
     <div class="card"><div class="emoji">☑️</div><h3>Task tracker</h3><p>Every action item across every meeting in one list — filter to what's open, tick things off, jump to the source.</p></div>
+    <div class="card"><div class="emoji">🏷️</div><h3>Auto topics</h3><p>Each meeting gets salient topic keywords pulled from the transcript — skim what it was about at a glance.</p></div>
     <div class="card"><div class="emoji">⚡</div><h3>GPU offload</h3><p>Heavy batch ML (large-v3 + diarization) can run on a remote SLURM GPU node, or fully on local CPU.</p></div>
     <div class="card"><div class="emoji">🔐</div><h3>Private by design</h3><p>No cloud, no accounts, no telemetry. Your recordings and notes never leave your disk.</p></div>
   </div>
@@ -171,7 +172,7 @@ meetingscribe record -t "Team standup" -p meet</code></pre>
   <p class="sub">A few things we’re upfront about.</p>
   <div class="grid">
     <div class="card"><h3>Auto-record, not auto-join</h3><p>It records the meetings you attend (hands-free, on schedule). A bot that joins a call <em>while you’re away</em> would need the Zoom Meeting SDK — deliberately out of scope for a key-free tool.</p></div>
-    <div class="card"><h3>Diarization quality</h3><p>The default diarizer is fully key-free. For best-in-class speaker separation, enable the optional pyannote backend (one free model-terms acceptance on Hugging Face).</p></div>
+    <div class="card"><h3>Diarization quality</h3><p>High-quality pyannote diarization by default (free Hugging Face weights), with a fully key-free embedding-based fallback that needs no token at all.</p></div>
     <div class="card"><h3>You own the data</h3><p>Recordings, transcripts, and notes live in a folder on your disk. Delete a meeting and it’s gone — no server copy.</p></div>
   </div>
   <div class="note" style="margin-top:18px">🔒 No analytics, no phone-home, no account. The only network calls are optional: downloading model weights once, and (if you opt in) a remote GPU you control.</div>

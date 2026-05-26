@@ -10,7 +10,7 @@ Tracking the autonomous feature-parity work against Otter.ai. Everything stays
 | Real-time transcription | ✅ live draft (faster-whisper, CPU) |
 | AI summary / key points / decisions | ✅ local LLM + extractive fallback |
 | Action items | ✅ owner + due date, checkable |
-| Speaker identification | ✅ pyannote / key-free resemblyzer; **rename in UI** |
+| Speaker identification | ✅ **pyannote community-1** (default, verified) → key-free resemblyzer fallback; rename in UI |
 | Ask-your-meeting chat | ✅ over transcript |
 | Search across meetings | ✅ SQLite FTS5 |
 | Auto-join / calendar | ✅ Zoom auto-**record** + key-free `.ics` (any calendar) |
@@ -38,9 +38,11 @@ Tracking the autonomous feature-parity work against Otter.ai. Everything stays
 10. ✅ "All action items" cross-meeting view (open/all toggle, owner filter, jump to meeting)
 11. ✅ Migrate FastAPI on_event → lifespan (deprecation warnings cleared)
 12. ✅ Regenerate notes on demand (re-summarize transcript w/o re-transcribing)
+13. ✅ Auto topic keywords per meeting (key-free)
+14. ✅ pyannote 4.x (community-1) enabled + verified — high-quality diarization default
 
 ## Next
-13. ⬜ Persistent speaker profiles (name once, matched across meetings via embeddings)
+15. ⬜ Persistent speaker profiles (name once, matched across meetings via embeddings)
 14. ⬜ Slide/screenshot capture during screen-share segments
 15. ⬜ Sentiment / topic tags per meeting (lightweight, key-free)
 
