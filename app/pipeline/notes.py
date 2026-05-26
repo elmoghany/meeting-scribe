@@ -1,0 +1,267 @@
+"""Summaries, action items, and 'ask-your-meeting' chat — all key-free.
+
+Backends (selected by MEETINGSCRIBE_LLM_BACKEND), all local / no API keys:
+  * ``llamacpp``     — a quantized GGUF model via llama-cpp-python (installed on
+                       the user's PC ahead of time). Default.
+  * ``transformers`` — full-precision HF model (used on the Cornell GPU node).
+  * ``extractive``   — pure-Python TextRank-style fallback; always available,
+                       no model download, instant. Also the safety net when a
+                       chosen LLM backend can't load.
+
+The extractive helpers are dependency-free and unit-tested.
+"""
+from __future__ import annotations
+
+import json
+import re
+from collections import Counter
+
+from ..config import get_settings
+from ..models import ActionItem, Segment, Summary
+
+# --------------------------------------------------------------------------- #
+# Pure-python extractive helpers (no deps, testable)
+# --------------------------------------------------------------------------- #
+_STOP = set(
+    "the a an and or but if then else for to of in on at by with as is are was were "
+    "be been being this that these those i you he she it we they me him her us them my "
+    "your his its our their so do does did doing have has had not no yes will would can "
+    "could should may might must just about into over than too very can't won't im ive "
+    "okay ok yeah yep nope uh um like really".split()
+)
+_SENT_SPLIT = re.compile(r"(?<=[.!?])\s+")
+
+# Cues that a sentence states a task / commitment.
+_ACTION_CUES = re.compile(
+    r"\b(action item|to-?do|follow[- ]?up|i'?ll|i will|we'?ll|we will|let'?s|let us|"
+    r"you (should|need to|have to|must|can)|we (should|need to|have to|must)|"
+    r"i (need to|have to|should|must)|please|make sure|don'?t forget|assign|"
+    r"will (send|share|email|prepare|review|update|create|set up|schedule|draft|"
+    r"check|fix|look into|circle back))\b",
+    re.IGNORECASE,
+)
+_DECISION_CUES = re.compile(
+    r"\b(we (decided|agreed|will go with|chose)|decision|agreed to|let'?s go with|"
+    r"final(ize|ized)?|we'?re going with|approved)\b",
+    re.IGNORECASE,
+)
+_DUE = re.compile(
+    r"\b(by|before|on|due)\s+"
+    r"(today|tomorrow|tonight|monday|tuesday|wednesday|thursday|friday|saturday|sunday|"
+    r"next week|end of (the )?(day|week|month)|eod|eow|"
+    r"(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s*\d{1,2}|"
+    r"\d{1,2}/\d{1,2}(/\d{2,4})?)\b",
+    re.IGNORECASE,
+)
+
+
+def _tokenize(text: str) -> list[str]:
+    return [w for w in re.findall(r"[a-z']+", text.lower()) if w not in _STOP and len(w) > 2]
+
+
+def _sentences(text: str) -> list[str]:
+    return [s.strip() for s in _SENT_SPLIT.split(text) if len(s.strip()) > 3]
+
+
+def extractive_summary(transcript_text: str, max_points: int = 7) -> Summary:
+    """Frequency-weighted sentence ranking (a lightweight TextRank)."""
+    sents = _sentences(transcript_text)
+    if not sents:
+        return Summary()
+    freq = Counter()
+    for s in sents:
+        freq.update(_tokenize(s))
+    if not freq:
+        return Summary(overview=" ".join(sents[:2]))
+    top = freq.most_common(1)[0][1]
+    scored = []
+    for i, s in enumerate(sents):
+        toks = _tokenize(s)
+        if not toks:
+            continue
+        score = sum(freq[t] for t in toks) / (len(toks) ** 0.6) / top
+        scored.append((score, i, s))
+    scored.sort(reverse=True)
+    chosen = sorted(scored[: max_points], key=lambda x: x[1])
+    key_points = [_clean(s) for _, _, s in chosen]
+    decisions = [_clean(s) for s in sents if _DECISION_CUES.search(s)][:5]
+    overview = " ".join(key_points[:2])
+    return Summary(overview=overview, key_points=key_points, decisions=decisions)
+
+
+def extract_action_items(segments: list[Segment]) -> list[ActionItem]:
+    """Heuristic action-item detection with owner (speaker) and due-date capture."""
+    items: list[ActionItem] = []
+    seen: set[str] = set()
+    for seg in segments:
+        for sent in _sentences(seg.text):
+            if not _ACTION_CUES.search(sent):
+                continue
+            norm = sent.lower().strip()
+            if norm in seen:
+                continue
+            seen.add(norm)
+            due_m = _DUE.search(sent)
+            owner = _infer_owner(sent, seg.speaker)
+            items.append(ActionItem(text=_clean(sent), owner=owner,
+                                    due=due_m.group(0) if due_m else None))
+    return items
+
+
+def _infer_owner(sentence: str, speaker: str) -> str | None:
+    low = sentence.lower()
+    if re.search(r"\bi'?ll\b|\bi will\b|\bi (need|have) to\b", low):
+        return speaker if speaker not in ("Unknown",) else "Me"
+    if re.search(r"\byou (should|need to|have to|must|can|will)\b", low):
+        return "(assigned)"
+    return speaker if speaker not in ("Unknown",) else None
+
+
+def _clean(s: str) -> str:
+    return re.sub(r"\s+", " ", s).strip().rstrip(".") + ("." if not s.endswith(("?", "!")) else "")
+
+
+# --------------------------------------------------------------------------- #
+# Backends
+# --------------------------------------------------------------------------- #
+_NOTES_SYS = (
+    "You are an expert meeting-notes assistant. Read the transcript and respond "
+    "with STRICT JSON only, no prose, matching this schema:\n"
+    '{"overview": str, "key_points": [str], "decisions": [str], '
+    '"action_items": [{"text": str, "owner": str|null, "due": str|null}]}'
+)
+
+
+def _llm_prompt(transcript: str) -> str:
+    return f"Transcript:\n{transcript}\n\nReturn the JSON now."
+
+
+def _parse_llm_json(raw: str, segments: list[Segment]) -> tuple[Summary, list[ActionItem]]:
+    try:
+        start, end = raw.find("{"), raw.rfind("}")
+        data = json.loads(raw[start: end + 1])
+        summary = Summary(
+            overview=str(data.get("overview", "")).strip(),
+            key_points=[str(x).strip() for x in data.get("key_points", []) if str(x).strip()],
+            decisions=[str(x).strip() for x in data.get("decisions", []) if str(x).strip()],
+        )
+        items = [
+            ActionItem(text=str(a.get("text", "")).strip(),
+                       owner=(a.get("owner") or None),
+                       due=(a.get("due") or None))
+            for a in data.get("action_items", []) if str(a.get("text", "")).strip()
+        ]
+        if not summary.overview and not items:
+            raise ValueError("empty")
+        return summary, items
+    except Exception:
+        # Robust fallback: never fail to produce notes.
+        text = to_text(segments)
+        return extractive_summary(text), extract_action_items(segments)
+
+
+def to_text(segments: list[Segment]) -> str:
+    return "\n".join(f"{s.speaker}: {s.text.strip()}" for s in segments)
+
+
+class ExtractiveNotes:
+    backend = "extractive"
+
+    def summarize(self, segments: list[Segment]) -> tuple[Summary, list[ActionItem]]:
+        return extractive_summary(to_text(segments)), extract_action_items(segments)
+
+    def chat(self, question: str, segments: list[Segment], history=None) -> str:
+        # Keyword retrieval over segments; return the best-matching lines.
+        q = set(_tokenize(question))
+        scored = sorted(
+            ((len(q & set(_tokenize(s.text))), s) for s in segments),
+            key=lambda x: x[0], reverse=True,
+        )
+        hits = [f"[{int(s.start)//60:02d}:{int(s.start)%60:02d}] {s.speaker}: {s.text}"
+                for n, s in scored[:5] if n > 0]
+        if not hits:
+            return "I couldn't find anything about that in this meeting."
+        return "Here's what was said that's most relevant:\n\n" + "\n".join(hits)
+
+
+class LlamaCppNotes:
+    backend = "llamacpp"
+
+    def __init__(self, model_path: str, n_ctx: int = 8192):
+        from llama_cpp import Llama  # noqa: PLC0415
+
+        self._llm = Llama(model_path=model_path, n_ctx=n_ctx, verbose=False,
+                          n_threads=None, n_gpu_layers=0)
+
+    def _complete(self, system: str, user: str, max_tokens: int = 1024,
+                  temperature: float = 0.2) -> str:
+        out = self._llm.create_chat_completion(
+            messages=[{"role": "system", "content": system},
+                      {"role": "user", "content": user}],
+            max_tokens=max_tokens, temperature=temperature,
+        )
+        return out["choices"][0]["message"]["content"]
+
+    def summarize(self, segments: list[Segment]) -> tuple[Summary, list[ActionItem]]:
+        raw = self._complete(_NOTES_SYS, _llm_prompt(to_text(segments)))
+        return _parse_llm_json(raw, segments)
+
+    def chat(self, question: str, segments: list[Segment], history=None) -> str:
+        context = to_text(segments)[:24000]
+        sys = ("Answer the user's question using ONLY the meeting transcript below. "
+               "If the answer isn't in it, say so. Be concise and cite speakers.\n\n"
+               f"Transcript:\n{context}")
+        return self._complete(sys, question, max_tokens=512, temperature=0.3).strip()
+
+
+class TransformersNotes:
+    """HF transformers backend — intended for the Cornell GPU node."""
+
+    backend = "transformers"
+
+    def __init__(self, model_id: str = "Qwen/Qwen2.5-7B-Instruct"):
+        import torch  # noqa: PLC0415
+        from transformers import AutoModelForCausalLM, AutoTokenizer  # noqa: PLC0415
+
+        self._tok = AutoTokenizer.from_pretrained(model_id)
+        self._model = AutoModelForCausalLM.from_pretrained(
+            model_id, torch_dtype="auto", device_map="auto",
+        )
+        self._torch = torch
+
+    def _complete(self, system: str, user: str, max_new_tokens: int = 1024) -> str:
+        msgs = [{"role": "system", "content": system}, {"role": "user", "content": user}]
+        inputs = self._tok.apply_chat_template(msgs, add_generation_prompt=True,
+                                               return_tensors="pt").to(self._model.device)
+        with self._torch.no_grad():
+            out = self._model.generate(inputs, max_new_tokens=max_new_tokens,
+                                       do_sample=False)
+        return self._tok.decode(out[0][inputs.shape[1]:], skip_special_tokens=True)
+
+    def summarize(self, segments: list[Segment]) -> tuple[Summary, list[ActionItem]]:
+        raw = self._complete(_NOTES_SYS, _llm_prompt(to_text(segments)))
+        return _parse_llm_json(raw, segments)
+
+    def chat(self, question: str, segments: list[Segment], history=None) -> str:
+        context = to_text(segments)[:48000]
+        sys = ("Answer using ONLY the transcript below; say so if it's not covered.\n\n"
+               f"Transcript:\n{context}")
+        return self._complete(sys, question, max_new_tokens=512).strip()
+
+
+def get_notes_backend():
+    """Factory honoring settings, with graceful fallback to extractive."""
+    s = get_settings()
+    backend = s.llm_backend
+    try:
+        if backend == "llamacpp":
+            if not s.gguf_path:
+                raise RuntimeError("MEETINGSCRIBE_GGUF_PATH not set")
+            return LlamaCppNotes(s.gguf_path)
+        if backend == "transformers":
+            return TransformersNotes()
+    except Exception as e:  # pragma: no cover - depends on optional deps
+        import sys
+        print(f"[notes] {backend} backend unavailable ({e}); using extractive.",
+              file=sys.stderr)
+    return ExtractiveNotes()

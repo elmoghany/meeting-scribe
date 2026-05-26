@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>MeetingScribe — local, key-free meeting notes for Meet & Zoom</title>
+<meta name="description" content="Open-source, MIT-licensed Otter/Gemini alternative. Live transcription, speaker diarization, AI summaries, action items, and 'ask your meeting' chat — 100% local, no API keys." />
+<meta property="og:title" content="MeetingScribe" />
+<meta property="og:description" content="The local, key-free, MIT meeting-notes agent for Google Meet & Zoom." />
+<meta property="og:type" content="website" />
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎙️</text></svg>" />
+<style>
+  :root{
+    --bg:#0b0e14; --bg2:#0f131c; --card:#151a24; --line:#222a38; --fg:#e8ecf4;
+    --muted:#93a0b5; --accent:#6ea8fe; --accent2:#a78bfa; --ok:#4ade80; --warn:#fbbf24;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--bg);color:var(--fg);
+    font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+  a{color:var(--accent);text-decoration:none}
+  a:hover{text-decoration:underline}
+  .wrap{max-width:1040px;margin:0 auto;padding:0 22px}
+  header{position:sticky;top:0;z-index:10;backdrop-filter:blur(10px);
+    background:rgba(11,14,20,.7);border-bottom:1px solid var(--line)}
+  nav{display:flex;align-items:center;gap:18px;height:60px}
+  nav .brand{font-weight:700;font-size:18px;margin-right:auto}
+  nav a{color:var(--muted);font-size:14px}
+  nav a.btn{color:#0b1020;background:var(--accent);padding:8px 14px;border-radius:8px;font-weight:600}
+  nav a.btn:hover{text-decoration:none;opacity:.9}
+  .hero{padding:78px 0 60px;text-align:center;
+    background:radial-gradient(1100px 460px at 50% -120px,rgba(110,168,254,.18),transparent),
+               radial-gradient(800px 380px at 80% 0,rgba(167,139,250,.12),transparent)}
+  .hero h1{font-size:54px;line-height:1.05;margin:.1em 0;letter-spacing:-.02em}
+  .hero .grad{background:linear-gradient(90deg,var(--accent),var(--accent2));
+    -webkit-background-clip:text;background-clip:text;color:transparent}
+  .hero p.lead{font-size:20px;color:var(--muted);max-width:680px;margin:18px auto 26px}
+  .badges{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:26px}
+  .badge{font-size:12px;color:var(--muted);border:1px solid var(--line);
+    padding:4px 11px;border-radius:999px;background:var(--bg2)}
+  .cta{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+  .button{display:inline-block;padding:13px 22px;border-radius:10px;font-weight:600;font-size:15px}
+  .button.primary{background:var(--accent);color:#0b1020}
+  .button.ghost{border:1px solid var(--line);color:var(--fg);background:var(--card)}
+  .button:hover{text-decoration:none;transform:translateY(-1px)}
+  section{padding:54px 0;border-top:1px solid var(--line)}
+  h2{font-size:30px;letter-spacing:-.01em;margin:0 0 6px}
+  .sub{color:var(--muted);margin:0 0 30px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:20px}
+  .card h3{margin:.2em 0 .4em;font-size:17px}
+  .card p{color:var(--muted);margin:0;font-size:14.5px}
+  .emoji{font-size:24px}
+  table{width:100%;border-collapse:collapse;background:var(--card);
+    border:1px solid var(--line);border-radius:14px;overflow:hidden;font-size:14.5px}
+  th,td{padding:13px 16px;text-align:left;border-bottom:1px solid var(--line)}
+  th{background:var(--bg2);color:var(--muted);font-weight:600}
+  tr:last-child td{border-bottom:0}
+  .yes{color:var(--ok);font-weight:600}.no{color:#f87171}
+  pre{background:#0a0d13;border:1px solid var(--line);border-radius:12px;padding:18px;
+    overflow:auto;font-size:13.5px;line-height:1.6}
+  code{font-family:"SF Mono",ui-monospace,Menlo,Consolas,monospace}
+  .flow{display:grid;grid-template-columns:1fr;gap:14px}
+  .stage{display:flex;gap:14px;align-items:flex-start;background:var(--card);
+    border:1px solid var(--line);border-radius:14px;padding:16px 18px}
+  .stage .n{flex:0 0 34px;height:34px;border-radius:50%;display:grid;place-items:center;
+    background:linear-gradient(135deg,var(--accent),var(--accent2));color:#0b1020;font-weight:700}
+  .stage b{display:block}.stage span{color:var(--muted);font-size:14px}
+  .pill{font-size:11px;padding:2px 8px;border-radius:999px;border:1px solid var(--line);color:var(--muted)}
+  .note{background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.3);
+    border-radius:12px;padding:14px 18px;color:#f7e8c0;font-size:14.5px}
+  footer{padding:40px 0 60px;color:var(--muted);font-size:14px;text-align:center;border-top:1px solid var(--line)}
+  @media(max-width:640px){.hero h1{font-size:38px}}
+</style>
+</head>
+<body>
+<header><div class="wrap"><nav>
+  <span class="brand">🎙️ MeetingScribe</span>
+  <a href="#features">Features</a>
+  <a href="#how">How it works</a>
+  <a href="#start">Quickstart</a>
+  <a class="btn" href="https://github.com/elmoghany/meeting-scribe">GitHub</a>
+</nav></div></header>
+
+<div class="hero"><div class="wrap">
+  <div class="badges">
+    <span class="badge">MIT licensed</span>
+    <span class="badge">100% local</span>
+    <span class="badge">No API keys</span>
+    <span class="badge">Google Meet + Zoom</span>
+  </div>
+  <h1>Your meetings,<br><span class="grad">transcribed & summarized</span><br>on your machine.</h1>
+  <p class="lead">An open-source Otter / Gemini alternative. Live transcription, speaker
+    diarization, AI summaries, action items, and an “ask-your-meeting” chat — with
+    nothing leaving your computer and no subscription.</p>
+  <div class="cta">
+    <a class="button primary" href="https://github.com/elmoghany/meeting-scribe">⭐ Get it on GitHub</a>
+    <a class="button ghost" href="#how">See how it works</a>
+  </div>
+</div></div>
+
+<section id="why"><div class="wrap">
+  <h2>Why not just use Otter?</h2>
+  <p class="sub">Otter sends your audio to the cloud, charges $8–30/user/mo, and caps your minutes. MeetingScribe doesn’t.</p>
+  <table>
+    <tr><th></th><th>Otter.ai</th><th>MeetingScribe</th></tr>
+    <tr><td>Where audio is processed</td><td>Their servers</td><td class="yes">Your machine / your GPU</td></tr>
+    <tr><td>Price</td><td>$8–30 / user / month</td><td class="yes">Free (MIT)</td></tr>
+    <tr><td>Minute caps</td><td>300–1,200 / mo</td><td class="yes">Unlimited</td></tr>
+    <tr><td>API keys / account</td><td>Required</td><td class="yes">None</td></tr>
+    <tr><td>Works with Meet & Zoom</td><td class="yes">Yes</td><td class="yes">Yes (system-audio capture)</td></tr>
+    <tr><td>Source code</td><td class="no">Closed</td><td class="yes">Open</td></tr>
+  </table>
+</div></section>
+
+<section id="features"><div class="wrap">
+  <h2>Everything you’d expect — locally</h2>
+  <p class="sub">The features that make notes actually useful, running on hardware you control.</p>
+  <div class="grid">
+    <div class="card"><div class="emoji">🎙️</div><h3>Live transcription</h3><p>Watch text appear as people talk — a small Whisper model drafts it in real time on your CPU.</p></div>
+    <div class="card"><div class="emoji">👥</div><h3>Speaker diarization</h3><p>Separates who said what. Your mic is anchored as “Me”; remote voices become Speaker 1, 2, …</p></div>
+    <div class="card"><div class="emoji">🧠</div><h3>AI summary & decisions</h3><p>A local quantized LLM writes the overview, key points, and decisions. Extractive fallback always works — no keys.</p></div>
+    <div class="card"><div class="emoji">✅</div><h3>Action items</h3><p>Auto-extracted with owner and due date, checkable right in the dashboard.</p></div>
+    <div class="card"><div class="emoji">💬</div><h3>Ask your meeting</h3><p>“What did we decide about the budget?” — chat over the transcript and get a grounded answer.</p></div>
+    <div class="card"><div class="emoji">🔎</div><h3>Search everything</h3><p>Full-text search across every past meeting, powered by SQLite FTS5.</p></div>
+    <div class="card"><div class="emoji">📅</div><h3>Auto-record (Zoom)</h3><p>Connect Zoom and it starts capture when a scheduled meeting begins, then stops when it ends.</p></div>
+    <div class="card"><div class="emoji">⚡</div><h3>GPU offload</h3><p>Heavy batch ML (large-v3 + diarization) can run on a remote SLURM GPU node, or fully on local CPU.</p></div>
+    <div class="card"><div class="emoji">🔐</div><h3>Private by design</h3><p>No cloud, no accounts, no telemetry. Your recordings and notes never leave your disk.</p></div>
+  </div>
+</div></section>
+
+<section id="how"><div class="wrap">
+  <h2>How it works</h2>
+  <p class="sub">It listens to your system audio + mic — so it works the same for Meet and Zoom, with no bot or vendor API.</p>
+  <div class="flow">
+    <div class="stage"><div class="n">1</div><div><b>Capture <span class="pill">local</span></b><span>Records your microphone (“Me”) and your computer’s audio output via WASAPI loopback (“Others”) to two WAV files.</span></div></div>
+    <div class="stage"><div class="n">2</div><div><b>Live draft <span class="pill">CPU</span></b><span>A small faster-whisper model transcribes each window in near-real-time and streams it to the dashboard.</span></div></div>
+    <div class="stage"><div class="n">3</div><div><b>Batch pass <span class="pill">GPU or CPU</span></b><span>On stop: large-v3 transcription + speaker diarization + an LLM produce the polished transcript, summary, and action items. Offloads to a SLURM GPU node if configured.</span></div></div>
+    <div class="stage"><div class="n">4</div><div><b>Review & ask <span class="pill">dashboard</span></b><span>Browse meetings, rename speakers, tick off action items, search across everything, and chat with the transcript.</span></div></div>
+  </div>
+</div></section>
+
+<section id="start"><div class="wrap">
+  <h2>Quickstart</h2>
+  <p class="sub">Python 3.10–3.12. faster-whisper needs no GPU; everything runs on CPU (just slower).</p>
+<pre><code># install
+python -m venv .venv &amp;&amp; .venv\Scripts\activate    # Windows
+pip install -e .
+
+# configure (optional: HF token only for the gated pyannote diarizer)
+copy .env.example .env
+
+# run the dashboard
+meetingscribe serve            # → http://127.0.0.1:8765
+
+# …or record from the terminal
+meetingscribe record -t "Team standup" -p meet</code></pre>
+  <p style="color:var(--muted)">Then join your Meet/Zoom call, hit <b>Start</b>, and hit <b>Stop</b> when you’re done. Notes appear automatically.</p>
+</div></section>
+
+<section id="honest"><div class="wrap">
+  <h2>Honest by default</h2>
+  <p class="sub">A few things we’re upfront about.</p>
+  <div class="grid">
+    <div class="card"><h3>Auto-record, not auto-join</h3><p>It records the meetings you attend (hands-free, on schedule). A bot that joins a call <em>while you’re away</em> would need the Zoom Meeting SDK — deliberately out of scope for a key-free tool.</p></div>
+    <div class="card"><h3>Diarization quality</h3><p>The default diarizer is fully key-free. For best-in-class speaker separation, enable the optional pyannote backend (one free model-terms acceptance on Hugging Face).</p></div>
+    <div class="card"><h3>You own the data</h3><p>Recordings, transcripts, and notes live in a folder on your disk. Delete a meeting and it’s gone — no server copy.</p></div>
+  </div>
+  <div class="note" style="margin-top:18px">🔒 No analytics, no phone-home, no account. The only network calls are optional: downloading model weights once, and (if you opt in) a remote GPU you control.</div>
+</div></section>
+
+<footer><div class="wrap">
+  <p><strong>MeetingScribe</strong> · MIT licensed · built with faster-whisper, pyannote, FastAPI.</p>
+  <p><a href="https://github.com/elmoghany/meeting-scribe">GitHub</a> ·
+     <a href="https://github.com/elmoghany/meeting-scribe#readme">Docs</a> ·
+     <a href="https://github.com/elmoghany/meeting-scribe/blob/main/LICENSE">License</a></p>
+</div></footer>
+</body>
+</html>

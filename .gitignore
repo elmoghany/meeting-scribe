@@ -1,0 +1,22 @@
+# secrets
+.env
+
+# python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+
+# data / models (kept out of git; lives in C:\cornell\meetingnotes by default)
+data/
+models/
+*.wav
+*.db
+*.sqlite3
+
+# os
+.DS_Store
+Thumbs.db

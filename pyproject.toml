@@ -1,0 +1,65 @@
+[project]
+name = "meetingscribe"
+version = "0.1.0"
+description = "MeetingScribe — an MIT-licensed, fully-local, key-free meeting notes agent for Google Meet & Zoom. Live transcription, speaker diarization, AI summaries, action items, and an 'ask-your-meeting' chat. Heavy ML offloads to a Cornell SLURM GPU node; runs on CPU too."
+readme = "README.md"
+requires-python = ">=3.10,<3.13"
+license = { text = "MIT" }
+authors = [{ name = "MeetingScribe contributors" }]
+keywords = ["meeting-notes", "transcription", "whisper", "diarization", "otter-alternative", "local-first"]
+
+# Core runtime deps — CPU-safe, install everywhere (the local capture client,
+# the dashboard, the live draft transcriber, and the remote job submitter).
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.30",
+    "websockets>=12.0",
+    "jinja2>=3.1",
+    "python-multipart>=0.0.9",
+    "pydantic>=2.7",
+    "pydantic-settings>=2.3",
+    "python-dotenv>=1.0",
+    "numpy>=1.24",
+    "soundfile>=0.12.1",     # BSD — WAV read/write
+    "soundcard>=0.4.3",      # BSD — WASAPI loopback + mic capture on Windows
+    "faster-whisper>=1.0.3", # MIT — CTranslate2 Whisper (live + batch ASR)
+    "huggingface-hub>=0.24", # Apache-2.0 — model downloads
+    "paramiko>=3.4",         # LGPL-2.1 (dynamically linked) — SSH to Cornell
+    "httpx>=0.27",           # BSD — Zoom REST/OAuth client
+]
+
+[project.optional-dependencies]
+# Heavy ML — installed on the Cornell GPU node by scripts/cornell_setup.sh, or
+# locally if you want CPU batch processing. torch is installed separately to
+# match the cluster CUDA version; do not pin a CPU torch here.
+ml = [
+    "torch",
+    "torchaudio",
+    "resemblyzer",           # Apache-2.0 — key-free diarization (bundled weights)
+    "scikit-learn",          # BSD — clustering for diarization
+    "pyannote.audio>=3.1",   # MIT (optional; weights gated, need HF token + terms)
+]
+# Local quantized LLM for summaries / action items / chat (no API keys).
+llm = [
+    "llama-cpp-python>=0.2.90",  # MIT
+]
+dev = ["pytest>=8.0", "ruff>=0.6", "httpx>=0.27"]
+
+[project.scripts]
+meetingscribe = "app.cli:main"
+mscribe = "app.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["app"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
