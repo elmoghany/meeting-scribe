@@ -167,7 +167,10 @@ def diarize_pyannote(wav_path: str, num_speakers: int | None = None,
     if torch.cuda.is_available():
         pipeline.to(torch.device("cuda"))
     kwargs = {"num_speakers": num_speakers} if num_speakers else {}
-    annotation = pipeline(wav_path, **kwargs)
+    result = pipeline(wav_path, **kwargs)
+    # pyannote 3.x returns an Annotation; 4.x returns a DiarizeOutput wrapper whose
+    # Annotation is at .speaker_diarization.
+    annotation = getattr(result, "speaker_diarization", result)
     turns = [Turn(start=float(seg.start), end=float(seg.end), speaker=str(label))
              for seg, _, label in annotation.itertracks(yield_label=True)]
     turns.sort(key=lambda t: t.start)
