@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import asyncio
 import threading
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
@@ -22,7 +23,30 @@ from ..batch import run_batch
 from ..config import get_settings
 from ..session import MeetingSession
 
-app = FastAPI(title="MeetingScribe", version="0.1.0")
+@asynccontextmanager
+async def lifespan(_app: "FastAPI"):
+    # --- startup ---
+    global _loop, _auto
+    _loop = asyncio.get_running_loop()
+    s = get_settings()
+    s.ensure_dirs()
+    asyncio.create_task(_broadcaster())
+    from ..integrations import zoom
+    if s.autostart_enabled and (zoom.is_configured() or s.calendar_ics):
+        from ..scheduler import AutoRecorder
+        _auto = AutoRecorder(
+            start_fn=lambda title, platform: _start_recording(title, platform).id,
+            stop_fn=_stop_recording,
+            is_recording_fn=lambda: bool(_session and _session.is_recording),
+        )
+        _auto.start()
+    yield
+    # --- shutdown ---
+    if _auto is not None:
+        _auto.stop_thread()
+
+
+app = FastAPI(title="MeetingScribe", version="0.1.0", lifespan=lifespan)
 
 _STATIC = Path(__file__).parent / "static"
 app.mount("/static", StaticFiles(directory=str(_STATIC)), name="static")
@@ -53,32 +77,6 @@ async def _broadcaster() -> None:
                 dead.append(ws)
         for ws in dead:
             _clients.discard(ws)
-
-
-@app.on_event("startup")
-async def _startup() -> None:
-    global _loop, _auto
-    _loop = asyncio.get_running_loop()
-    s = get_settings()
-    s.ensure_dirs()
-    asyncio.create_task(_broadcaster())
-
-    # Auto-record scheduled Zoom meetings, if configured.
-    from ..integrations import zoom
-    if s.autostart_enabled and (zoom.is_configured() or s.calendar_ics):
-        from ..scheduler import AutoRecorder
-        _auto = AutoRecorder(
-            start_fn=lambda title, platform: _start_recording(title, platform).id,
-            stop_fn=_stop_recording,
-            is_recording_fn=lambda: bool(_session and _session.is_recording),
-        )
-        _auto.start()
-
-
-@app.on_event("shutdown")
-async def _shutdown() -> None:
-    if _auto is not None:
-        _auto.stop_thread()
 
 
 # --------------------------------------------------------------------------- #
