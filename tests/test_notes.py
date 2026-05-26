@@ -22,6 +22,24 @@ def test_extract_action_items_owner_and_due():
     assert sam_item.due and "friday" in sam_item.due.lower()
 
 
+def test_keywords_topics():
+    segs = [
+        _seg("The launch plan is critical. We reviewed the launch plan today."),
+        _seg("Marketing wants more budget. The budget covers the launch plan."),
+        _seg("Budget and budget approvals were discussed at length."),
+    ]
+    kw = notes.keywords(segs, top_n=6)
+    assert "budget" in kw                       # frequent unigram
+    assert "launch plan" in kw                  # repeated bigram phrase
+    assert any(" " in k for k in kw)            # at least one bigram phrase
+    assert all(isinstance(k, str) for k in kw)
+    assert len(kw) <= 6
+
+
+def test_keywords_empty():
+    assert notes.keywords([]) == []
+
+
 def test_extractive_summary_nonempty():
     text = ("We need to ship the v2 release. The v2 release depends on the new "
             "auth service. We decided to use OAuth for auth. Marketing wants the "

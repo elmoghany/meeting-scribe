@@ -284,6 +284,10 @@ async function openMeeting(id) {
     }
   } else sd.innerHTML = `<p class="muted">No summary yet (still processing?).</p>`;
 
+  // topics (auto keywords)
+  const tp = $("topics"); tp.innerHTML = "";
+  (d.topics || []).forEach((t) => { const c = chip(t, false); c.classList.add("topic"); tp.appendChild(c); });
+
   // speakers (rename inline — reuses /rename-speakers)
   const sp = $("speakers"); sp.innerHTML = "";
   const names = [...new Set(d.segments.map((s) => s.speaker))];

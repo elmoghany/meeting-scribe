@@ -89,6 +89,22 @@ def extractive_summary(transcript_text: str, max_points: int = 7) -> Summary:
     return Summary(overview=overview, key_points=key_points, decisions=decisions)
 
 
+def keywords(segments: list[Segment], top_n: int = 8) -> list[str]:
+    """Extract salient topic phrases (key-free): frequent bigrams (weighted) +
+    top remaining unigrams, minus stopwords. Otter-style 'topics'."""
+    toks = _tokenize(" ".join(s.text for s in segments))
+    if not toks:
+        return []
+    uni = Counter(toks)
+    bi = Counter(f"{a} {b}" for a, b in zip(toks, toks[1:]) if a != b)
+    bigram_phrases = [p for p, c in bi.items() if c >= 2]
+    covered = {w for p in bigram_phrases for w in p.split()}
+    scored = [(bi[p] * 2, p) for p in bigram_phrases]
+    scored += [(c, w) for w, c in uni.items() if w not in covered and c >= 2]
+    scored.sort(key=lambda x: (-x[0], x[1]))
+    return [p for _, p in scored[:top_n]]
+
+
 def extract_action_items(segments: list[Segment]) -> list[ActionItem]:
     """Heuristic action-item detection with owner (speaker) and due-date capture."""
     items: list[ActionItem] = []
