@@ -347,6 +347,24 @@ def reprocess(meeting_id: str):
     return {"meeting_id": meeting_id, "status": "processing"}
 
 
+@app.post("/api/meetings/{meeting_id}/regenerate-notes")
+def regenerate_notes(meeting_id: str):
+    """Re-run summary + action-item extraction on the existing transcript
+    (no re-transcription). Handy after renaming speakers or changing the LLM."""
+    segs = db.get_segments(meeting_id, source="batch") or db.get_segments(meeting_id)
+    if not segs:
+        raise HTTPException(404, "No transcript to summarize yet")
+    from ..pipeline.notes import get_notes_backend
+    from ..pipeline.process import export_markdown
+    backend = get_notes_backend()
+    summary, items = backend.summarize(segs)
+    db.save_summary(meeting_id, summary)
+    db.save_action_items(meeting_id, items)
+    export_markdown(meeting_id)
+    return {"key_points": len(summary.key_points), "action_items": len(items),
+            "backend": backend.backend}
+
+
 @app.post("/api/action/{item_id}")
 def toggle_action(item_id: int, done: bool = True):
     db.set_action_done(item_id, done)

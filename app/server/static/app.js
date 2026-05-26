@@ -363,6 +363,13 @@ $("btn-free-audio").onclick = async () => {
   const r = await post(`/api/meetings/${currentMeeting}/delete-audio`);
   alert(`Freed ${r.freed_mb} MB (${r.removed.length} file(s)).`);
 };
+$("btn-regen").onclick = async () => {
+  const b = $("btn-regen"); b.textContent = "Regenerating…"; b.disabled = true;
+  try {
+    await post(`/api/meetings/${currentMeeting}/regenerate-notes`);
+    await openMeeting(currentMeeting); renderAllActions();
+  } finally { b.textContent = "Regen notes"; b.disabled = false; }
+};
 $("btn-reprocess").onclick = () => post(`/api/meetings/${currentMeeting}/reprocess`);
 $("btn-delete").onclick = async () => {
   if (!confirm("Delete this meeting?")) return;

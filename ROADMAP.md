@@ -37,10 +37,11 @@ Tracking the autonomous feature-parity work against Otter.ai. Everything stays
 
 10. ✅ "All action items" cross-meeting view (open/all toggle, owner filter, jump to meeting)
 11. ✅ Migrate FastAPI on_event → lifespan (deprecation warnings cleared)
+12. ✅ Regenerate notes on demand (re-summarize transcript w/o re-transcribing)
 
 ## Next
-12. ⬜ Persistent speaker profiles (name once, matched across meetings via embeddings)
-13. ⬜ Slide/screenshot capture during screen-share segments
-14. ⬜ Per-meeting summary regen / "improve notes" with the LLM backend on demand
+13. ⬜ Persistent speaker profiles (name once, matched across meetings via embeddings)
+14. ⬜ Slide/screenshot capture during screen-share segments
+15. ⬜ Sentiment / topic tags per meeting (lightweight, key-free)
 
 | CRM/Slack/Notion integrations | ✅ via key-free outbound webhook |

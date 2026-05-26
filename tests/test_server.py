@@ -4,7 +4,7 @@ from fastapi.testclient import TestClient
 
 from app import db
 from app.config import get_settings
-from app.models import Meeting
+from app.models import Meeting, Segment
 from app.server.main import app
 
 
@@ -29,6 +29,21 @@ def test_set_title_blank_falls_back():
     with TestClient(app) as c:
         assert c.post(f"/api/meetings/{mid}/title", json={"title": "   "}).json()["title"] \
             == "Untitled meeting"
+
+
+def test_regenerate_notes_resummarizes():
+    mid = _mk("srv-regen")
+    db.replace_segments(mid, [
+        Segment(start=0, end=3, text="I will send the report by Friday.",
+                speaker="Me", source="batch"),
+        Segment(start=3, end=6, text="We decided to launch on Thursday.",
+                speaker="Sam", source="batch"),
+    ], source="batch")
+    with TestClient(app) as c:
+        r = c.post(f"/api/meetings/{mid}/regenerate-notes").json()
+    assert r["action_items"] >= 1
+    assert db.get_summary(mid) is not None
+    assert any("report" in a.text.lower() for a in db.get_action_items(mid))
 
 
 def test_delete_audio_removes_wavs_keeps_meeting():
