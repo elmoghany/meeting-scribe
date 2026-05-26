@@ -111,6 +111,13 @@ def persist_result(meeting_id: str, res: PipelineResult) -> None:
                       duration_sec=res.duration_sec, ended_at=time.time())
     export_markdown(meeting_id)
 
+    # fire-and-forget outbound webhook (no-op if MEETINGSCRIBE_WEBHOOK_URL unset)
+    try:
+        from ..integrations.webhook import notify
+        notify(meeting_id, db.get_meeting(meeting_id), res.summary, res.action_items)
+    except Exception:
+        pass
+
 
 def process_local(meeting_id: str, audio_dir: str | None = None,
                   batch_model: str | None = None) -> dict:

@@ -38,6 +38,9 @@ class Settings:
         # secrets
         self.hf_token = os.getenv("HUGGINGFACE_TOKEN") or None
 
+        # optional outbound webhook (Slack/Discord/Notion/Zapier incoming URL)
+        self.webhook_url = os.getenv("MEETINGSCRIBE_WEBHOOK_URL") or None
+
         # ASR
         self.live_model = os.getenv("MEETINGSCRIBE_LIVE_MODEL", "base.en")
         self.live_compute = os.getenv("MEETINGSCRIBE_LIVE_COMPUTE", "int8")
