@@ -12,8 +12,8 @@ import threading
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
-from fastapi.responses import (HTMLResponse, JSONResponse, PlainTextResponse,
-                               RedirectResponse)
+from fastapi.responses import (FileResponse, HTMLResponse, JSONResponse,
+                               PlainTextResponse, RedirectResponse)
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
@@ -231,6 +231,19 @@ def meeting_export(meeting_id: str, fmt: str = "txt"):
             raise HTTPException(400, f"Unknown format '{fmt}'")
     return PlainTextResponse(body, media_type=media, headers={
         "Content-Disposition": f'attachment; filename="{meeting_id}.{fmt}"'})
+
+
+@app.get("/api/meetings/{meeting_id}/audio")
+def meeting_audio(meeting_id: str):
+    """Stream the mixed meeting audio (mic+system) for the synced player.
+    FileResponse serves HTTP range requests, so the <audio> element can seek."""
+    if not db.get_meeting(meeting_id):
+        raise HTTPException(404, "Meeting not found")
+    from ..pipeline.audiomix import ensure_meeting_wav
+    path = ensure_meeting_wav(get_settings().recordings_dir / meeting_id)
+    if not path:
+        raise HTTPException(404, "No audio for this meeting")
+    return FileResponse(str(path), media_type="audio/wav")
 
 
 @app.get("/api/meetings/{meeting_id}/analytics")

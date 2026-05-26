@@ -54,11 +54,14 @@ ul { list-style: none; padding: 0; margin: 0; }
 #meeting-list .mtitle { font-weight: 600; }
 .badge { font-size: 10px; padding: 1px 6px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); }
 #live, #transcript { max-height: 55vh; overflow: auto; }
-.seg { padding: 4px 0; border-bottom: 1px solid #1c2029; }
+.seg { padding: 4px 6px; border-bottom: 1px solid #1c2029; border-radius: 6px; cursor: pointer; }
+.seg:hover { background: #1a1f29; }
+.seg.playing { background: #1d2740; box-shadow: inset 3px 0 0 var(--accent); }
 .seg .who { font-weight: 600; color: var(--accent); margin-right: 6px; }
 .seg .who.me { color: var(--ok); }
 .seg .ts { color: var(--muted); font-size: 11px; margin-right: 6px; }
 .seg.live { opacity: .85; }
+#player { width: 100%; margin: 8px 0 4px; height: 34px; }
 #actions li { padding: 6px 0; }
 #actions input { width: auto; margin-right: 8px; }
 .kp { margin: 4px 0; }

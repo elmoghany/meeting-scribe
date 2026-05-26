@@ -50,12 +50,37 @@ function handleEvent(ev) {
 function segEl(s) {
   const div = document.createElement("div");
   div.className = "seg" + (s.source === "live" ? " live" : "");
+  div.dataset.start = s.start;
+  div.dataset.end = s.end;
   const mm = String(Math.floor(s.start / 60)).padStart(2, "0");
   const ss = String(Math.floor(s.start % 60)).padStart(2, "0");
   const me = s.speaker === "Me" ? " me" : "";
   div.innerHTML = `<span class="ts">${mm}:${ss}</span>` +
     `<span class="who${me}">${s.speaker}</span>${escapeHtml(s.text)}`;
+  div.onclick = () => seekTo(s.start);
   return div;
+}
+
+function seekTo(t) {
+  const p = $("player");
+  if (!p.getAttribute("src")) return;
+  p.currentTime = t;
+  p.play().catch(() => {});
+}
+
+// highlight the transcript line currently playing
+let _lastActive = null;
+function highlightPlaying() {
+  const t = $("player").currentTime;
+  const segs = $("transcript").querySelectorAll(".seg");
+  let active = null;
+  for (const el of segs) {
+    if (t >= parseFloat(el.dataset.start) && t < parseFloat(el.dataset.end)) { active = el; break; }
+  }
+  if (active === _lastActive) return;
+  if (_lastActive) _lastActive.classList.remove("playing");
+  if (active) { active.classList.add("playing"); active.scrollIntoView({ block: "nearest" }); }
+  _lastActive = active;
 }
 function appendLive(s) {
   const live = $("live");
@@ -104,6 +129,9 @@ async function openMeeting(id) {
   refreshMeetings();
   const d = await api("/api/meetings/" + id);
   $("detail-card").classList.remove("hidden");
+  const player = $("player");
+  player.src = "/api/meetings/" + id + "/audio";
+  _lastActive = null;
   $("detail-title").textContent = d.meeting.title;
   const mins = (d.meeting.duration_sec || 0) / 60;
   $("detail-meta").textContent =
@@ -208,5 +236,6 @@ $("search").addEventListener("input", (e) => {
   }, 250);
 });
 
+$("player").addEventListener("timeupdate", highlightPlaying);
 connectWS();
 refreshMeetings();
