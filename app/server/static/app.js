@@ -11,6 +11,8 @@ const post = (url, body) =>
 
 let currentMeeting = null;
 let liveMeetingId = null;
+let highlightedIds = new Set();
+let annotations = [];
 
 // ---------- live websocket ----------
 function connectWS() {
@@ -47,19 +49,75 @@ function handleEvent(ev) {
   }
 }
 
-function segEl(s) {
+function segEl(s, withStar) {
   const div = document.createElement("div");
-  div.className = "seg" + (s.source === "live" ? " live" : "");
+  const hi = highlightedIds.has(s.id) ? " hi" : "";
+  div.className = "seg" + (s.source === "live" ? " live" : "") + hi;
   div.dataset.start = s.start;
   div.dataset.end = s.end;
+  div.dataset.id = s.id;
   const mm = String(Math.floor(s.start / 60)).padStart(2, "0");
   const ss = String(Math.floor(s.start % 60)).padStart(2, "0");
   const me = s.speaker === "Me" ? " me" : "";
   div.innerHTML = `<span class="ts">${mm}:${ss}</span>` +
     `<span class="who${me}">${s.speaker}</span>${escapeHtml(s.text)}`;
+  if (withStar && s.id != null) {
+    const star = document.createElement("span");
+    star.className = "star";
+    star.textContent = highlightedIds.has(s.id) ? "★" : "☆";
+    star.title = "Highlight this line";
+    star.onclick = (e) => { e.stopPropagation(); toggleHighlight(s.id, div, star); };
+    div.appendChild(star);
+  }
   div.onclick = () => seekTo(s.start);
   return div;
 }
+
+async function toggleHighlight(segId, div, star) {
+  const r = await post(`/api/meetings/${currentMeeting}/highlight/${segId}`);
+  if (r.highlighted) { highlightedIds.add(segId); star.textContent = "★"; div.classList.add("hi"); }
+  else { highlightedIds.delete(segId); star.textContent = "☆"; div.classList.remove("hi"); }
+  annotations = await api(`/api/meetings/${currentMeeting}/annotations`);
+  renderAnnotations();
+}
+
+function renderAnnotations() {
+  const box = $("annotations"); box.innerHTML = "";
+  const segById = {};
+  $("transcript").querySelectorAll(".seg").forEach((el) => { segById[el.dataset.id] = el; });
+  const items = annotations.filter((a) => a.kind === "comment" || a.kind === "highlight");
+  if (!items.length) { box.innerHTML = `<p class="muted">No notes yet. Star a line or add a comment.</p>`; return; }
+  for (const a of items) {
+    const row = document.createElement("div");
+    row.className = "annot";
+    const tag = a.kind === "highlight" ? "★" : "💬";
+    let ctx = "";
+    if (a.segment_id != null && segById[a.segment_id]) {
+      const el = segById[a.segment_id];
+      ctx = ` <span class="muted">— ${el.querySelector(".ts").textContent} ${escapeHtml(el.querySelector(".who").textContent)}</span>`;
+    }
+    row.innerHTML = `<span>${tag} ${escapeHtml(a.text || (a.kind === "highlight" ? "(highlight)" : ""))}${ctx}</span>`;
+    const del = document.createElement("span");
+    del.className = "annot-del"; del.textContent = "✕"; del.title = "Delete";
+    del.onclick = async () => { await api(`/api/annotations/${a.id}`, { method: "DELETE" });
+      annotations = await api(`/api/meetings/${currentMeeting}/annotations`);
+      if (a.kind === "highlight") { highlightedIds.delete(a.segment_id);
+        const el = segById[a.segment_id]; if (el) { el.classList.remove("hi"); const st = el.querySelector(".star"); if (st) st.textContent = "☆"; } }
+      renderAnnotations(); };
+    row.appendChild(del);
+    box.appendChild(row);
+  }
+}
+
+$("btn-comment").onclick = async () => {
+  const t = $("comment-input").value.trim();
+  if (!t || !currentMeeting) return;
+  await post(`/api/meetings/${currentMeeting}/comment`, { text: t });
+  $("comment-input").value = "";
+  annotations = await api(`/api/meetings/${currentMeeting}/annotations`);
+  renderAnnotations();
+};
+$("comment-input").addEventListener("keydown", (e) => { if (e.key === "Enter") $("btn-comment").click(); });
 
 function seekTo(t) {
   const p = $("player");
@@ -183,9 +241,14 @@ async function openMeeting(id) {
     } else an.innerHTML = `<p class="muted">No data.</p>`;
   } catch { an.innerHTML = ""; }
 
-  // transcript
+  // annotations (highlights + comments) — fetch before transcript so stars render
+  annotations = await api(`/api/meetings/${id}/annotations`).catch(() => []);
+  highlightedIds = new Set(annotations.filter((a) => a.kind === "highlight").map((a) => a.segment_id));
+
+  // transcript (with highlight stars)
   const t = $("transcript"); t.innerHTML = "";
-  for (const s of d.segments) t.appendChild(segEl(s));
+  for (const s of d.segments) t.appendChild(segEl(s, true));
+  renderAnnotations();
   $("chat-answer").innerHTML = "";
 }
 

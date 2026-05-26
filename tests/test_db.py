@@ -63,3 +63,27 @@ def test_delete_cascades():
     db.delete_meeting(mid)
     assert db.get_meeting(mid) is None
     assert db.get_segments(mid) == []
+
+
+def test_annotations_comment_and_highlight():
+    mid = _mk("m-annot")
+    sid = db.add_segment(mid, Segment(start=0, end=1, text="x", speaker="Me", source="batch"))
+    cid = db.add_annotation(mid, kind="comment", text="great point", segment_id=sid)
+    anns = db.list_annotations(mid)
+    assert any(a["id"] == cid and a["text"] == "great point" for a in anns)
+    # toggle highlight on/off
+    assert db.toggle_highlight(mid, sid) is True
+    assert any(a["kind"] == "highlight" and a["segment_id"] == sid
+               for a in db.list_annotations(mid))
+    assert db.toggle_highlight(mid, sid) is False
+    assert not any(a["kind"] == "highlight" for a in db.list_annotations(mid))
+    # delete comment
+    db.delete_annotation(cid)
+    assert not any(a["id"] == cid for a in db.list_annotations(mid))
+
+
+def test_annotations_cascade_on_meeting_delete():
+    mid = _mk("m-annot-del")
+    db.add_annotation(mid, kind="comment", text="hi")
+    db.delete_meeting(mid)
+    assert db.list_annotations(mid) == []

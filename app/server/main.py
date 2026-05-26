@@ -99,6 +99,12 @@ class RenameReq(BaseModel):
     mapping: dict[str, str]
 
 
+class CommentReq(BaseModel):
+    text: str
+    segment_id: int | None = None
+    author: str | None = None
+
+
 # --------------------------------------------------------------------------- #
 # recording control
 # --------------------------------------------------------------------------- #
@@ -295,6 +301,34 @@ def reprocess(meeting_id: str):
 def toggle_action(item_id: int, done: bool = True):
     db.set_action_done(item_id, done)
     return {"id": item_id, "done": done}
+
+
+# --------------------------------------------------------------------------- #
+# highlights + comments
+# --------------------------------------------------------------------------- #
+@app.get("/api/meetings/{meeting_id}/annotations")
+def get_annotations(meeting_id: str):
+    return db.list_annotations(meeting_id)
+
+
+@app.post("/api/meetings/{meeting_id}/comment")
+def add_comment(meeting_id: str, req: CommentReq):
+    if not req.text.strip():
+        raise HTTPException(400, "Empty comment")
+    aid = db.add_annotation(meeting_id, kind="comment", text=req.text.strip(),
+                            segment_id=req.segment_id, author=req.author)
+    return {"id": aid}
+
+
+@app.post("/api/meetings/{meeting_id}/highlight/{segment_id}")
+def toggle_highlight(meeting_id: str, segment_id: int):
+    return {"highlighted": db.toggle_highlight(meeting_id, segment_id)}
+
+
+@app.delete("/api/annotations/{annotation_id}")
+def delete_annotation(annotation_id: int):
+    db.delete_annotation(annotation_id)
+    return {"deleted": annotation_id}
 
 
 # --------------------------------------------------------------------------- #

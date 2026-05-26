@@ -62,6 +62,14 @@ ul { list-style: none; padding: 0; margin: 0; }
 .seg .ts { color: var(--muted); font-size: 11px; margin-right: 6px; }
 .seg.live { opacity: .85; }
 #player { width: 100%; margin: 8px 0 4px; height: 34px; }
+.seg { position: relative; }
+.seg.hi { background: rgba(251, 191, 36, .10); box-shadow: inset 3px 0 0 var(--warn); }
+.seg .star { position: absolute; right: 6px; top: 4px; color: var(--warn); cursor: pointer; font-size: 14px; opacity: 0; }
+.seg:hover .star, .seg.hi .star { opacity: 1; }
+.annot { display: flex; justify-content: space-between; gap: 8px; align-items: flex-start;
+  padding: 6px 0; border-bottom: 1px solid #1c2029; font-size: 13.5px; }
+.annot-del { color: var(--muted); cursor: pointer; flex: 0 0 auto; }
+.annot-del:hover { color: var(--danger); }
 #actions li { padding: 6px 0; }
 #actions input { width: auto; margin-right: 8px; }
 .kp { margin: 4px 0; }

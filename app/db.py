@@ -55,6 +55,18 @@ CREATE TABLE IF NOT EXISTS action_items (
 );
 CREATE INDEX IF NOT EXISTS idx_action_meeting ON action_items(meeting_id);
 
+-- highlights (kind='highlight', segment-anchored) and comments (kind='comment')
+CREATE TABLE IF NOT EXISTS annotations (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    meeting_id  TEXT NOT NULL REFERENCES meetings(id) ON DELETE CASCADE,
+    segment_id  INTEGER,
+    kind        TEXT NOT NULL DEFAULT 'comment',
+    text        TEXT NOT NULL DEFAULT '',
+    author      TEXT,
+    created_at  REAL NOT NULL DEFAULT (strftime('%s','now'))
+);
+CREATE INDEX IF NOT EXISTS idx_annot_meeting ON annotations(meeting_id);
+
 -- Full-text search over transcript text, kept in sync via triggers.
 CREATE VIRTUAL TABLE IF NOT EXISTS segments_fts USING fts5(
     text, speaker UNINDEXED, meeting_id UNINDEXED,
@@ -261,6 +273,46 @@ def get_action_items(meeting_id: str) -> list[ActionItem]:
 def set_action_done(item_id: int, done: bool) -> None:
     with cursor() as c:
         c.execute("UPDATE action_items SET done = ? WHERE id = ?", (int(done), item_id))
+
+
+# --------------------------------------------------------------------------- #
+# annotations (highlights + comments)
+# --------------------------------------------------------------------------- #
+def add_annotation(meeting_id: str, kind: str = "comment", text: str = "",
+                   segment_id: int | None = None, author: str | None = None) -> int:
+    with cursor() as c:
+        cur = c.execute(
+            "INSERT INTO annotations(meeting_id,segment_id,kind,text,author)"
+            " VALUES (?,?,?,?,?)",
+            (meeting_id, segment_id, kind, text, author))
+        return int(cur.lastrowid)
+
+
+def toggle_highlight(meeting_id: str, segment_id: int) -> bool:
+    """Toggle a highlight on a segment. Returns True if now highlighted."""
+    with cursor() as c:
+        row = c.execute(
+            "SELECT id FROM annotations WHERE meeting_id=? AND segment_id=? AND kind='highlight'",
+            (meeting_id, segment_id)).fetchone()
+        if row:
+            c.execute("DELETE FROM annotations WHERE id=?", (row["id"],))
+            return False
+        c.execute("INSERT INTO annotations(meeting_id,segment_id,kind,text)"
+                  " VALUES (?,?,'highlight','')", (meeting_id, segment_id))
+        return True
+
+
+def list_annotations(meeting_id: str) -> list[dict]:
+    with cursor() as c:
+        rows = c.execute(
+            "SELECT * FROM annotations WHERE meeting_id=? ORDER BY created_at, id",
+            (meeting_id,)).fetchall()
+    return [dict(r) for r in rows]
+
+
+def delete_annotation(annotation_id: int) -> None:
+    with cursor() as c:
+        c.execute("DELETE FROM annotations WHERE id=?", (annotation_id,))
 
 
 # --------------------------------------------------------------------------- #
