@@ -55,8 +55,12 @@ token to download the gated pyannote diarization weights once.
 | 🧠 **AI summary + decisions** | Quantized local LLM (GGUF) — no API keys. Extractive fallback always works. |
 | ✅ **Action items** | Auto-extracted with owner + due date, checkable in the UI. |
 | 💬 **Ask your meeting** | Chat over the transcript: "What did we decide about the budget?" |
+| 🔊 **Synced audio playback** | Click any line to jump there; the playing line highlights & auto-scrolls. |
+| ✨ **Highlights & comments** | Star key lines, add notes — collaboration without the cloud. |
+| 📊 **Talk-time analytics** | Per-speaker share, word counts, words-per-minute. |
+| ✏️ **Rename speakers** | Turn "Speaker 1" into real names in one click; flows to transcript, exports, analytics. |
 | 🔎 **Search everything** | SQLite FTS5 full-text search across every past meeting. |
-| 📝 **Markdown export** | One-click shareable notes file per meeting. |
+| 📝 **Export anywhere** | Markdown, plain text, **SRT/VTT subtitles**, and JSON. |
 | 🖥️ **Local web dashboard** | Start/stop, live transcript, browse, rename speakers, chat. |
 | 🔐 **100% local / MIT** | No cloud, no accounts. Data stays in `C:\cornell\meetingnotes`. |
 
