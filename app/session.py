@@ -33,6 +33,8 @@ class MeetingSession:
         self.emit = emit or (lambda e: None)
         self._rec_dir = s.recordings_dir / self.meeting.id
         self._win_q: "queue.Queue" = queue.Queue(maxsize=64)
+        self._live_segs: list = []        # accumulated for rolling live notes
+        self._last_notes_n = 0
         self._stop = threading.Event()
         self._recorder = DualRecorder(
             self._rec_dir, sample_rate=s.sample_rate, window_sec=s.live_chunk_sec,
@@ -68,8 +70,27 @@ class MeetingSession:
                 continue
             for seg in segs:
                 seg.id = db.add_segment(self.meeting.id, seg)
+                self._live_segs.append(seg)
                 self.emit({"type": "segment", "meeting_id": self.meeting.id,
                            **seg.to_dict()})
+            self._maybe_live_notes()
+
+    def _maybe_live_notes(self, every: int = 6):
+        """Emit a rolling extractive summary + action items every `every` new
+        segments — Otter-style live insight while the meeting is still going."""
+        n = len(self._live_segs)
+        if n == 0 or (n - self._last_notes_n) < every:
+            return
+        self._last_notes_n = n
+        try:
+            from .pipeline.notes import extract_action_items, extractive_summary, to_text
+            summ = extractive_summary(to_text(self._live_segs), max_points=4)
+            items = extract_action_items(self._live_segs)
+            self.emit({"type": "live_notes", "meeting_id": self.meeting.id,
+                       "overview": summ.overview, "key_points": summ.key_points,
+                       "action_items": [a.to_dict() for a in items]})
+        except Exception:
+            pass
 
     def start(self):
         get_settings().ensure_dirs()

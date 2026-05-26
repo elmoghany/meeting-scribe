@@ -54,6 +54,13 @@ ul { list-style: none; padding: 0; margin: 0; }
 #meeting-list .mtitle { font-weight: 600; }
 .badge { font-size: 10px; padding: 1px 6px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); }
 #live, #transcript { max-height: 55vh; overflow: auto; }
+#live-notes { background: #11161f; border: 1px solid var(--line); border-left: 3px solid var(--accent2);
+  border-radius: 8px; padding: 10px 12px; margin-bottom: 10px; font-size: 13.5px; }
+.ln-title { font-weight: 600; color: var(--accent2); margin-bottom: 4px; }
+.ln-ov { color: var(--fg); }
+.ln-sub { color: var(--muted); font-size: 12px; margin-top: 6px; text-transform: uppercase; letter-spacing: .04em; }
+.ln-ul { margin: 4px 0 0; padding-left: 18px; }
+.ln-ul li { padding: 2px 0; }
 .seg { padding: 4px 6px; border-bottom: 1px solid #1c2029; border-radius: 6px; cursor: pointer; }
 .seg:hover { background: #1a1f29; }
 .seg.playing { background: #1d2740; box-shadow: inset 3px 0 0 var(--accent); }

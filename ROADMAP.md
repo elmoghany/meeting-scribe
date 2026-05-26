@@ -30,9 +30,9 @@ Tracking the autonomous feature-parity work against Otter.ai. Everything stays
 4. ✅ Rename speakers in the dashboard
 5. ✅ Tags / folders + filtering
 6. ✅ `.ics` calendar import → auto-record any calendar (key-free, recurrence-aware)
+7. ✅ Live summary + live action items during the call (rolling extractive notes)
 
 ## Next
-7. ⬜ Live summary + live action items during the call
 8. ⬜ Persistent speaker profiles (name once, matched across meetings via embeddings)
 9. ⬜ Per-meeting outbound webhook (key-free Slack/Notion/Zapier bridge)
 10. ⬜ Slide/screenshot capture during screen-share segments

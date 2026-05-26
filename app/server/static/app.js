@@ -36,10 +36,14 @@ function handleEvent(ev) {
   switch (ev.type) {
     case "started":
       liveMeetingId = ev.id; $("live").innerHTML = "";
+      $("live-notes").innerHTML = ""; $("live-notes").classList.add("hidden");
       $("live-flag").textContent = "● recording " + ev.title;
       break;
     case "segment":
       if (ev.meeting_id === liveMeetingId) appendLive(ev);
+      break;
+    case "live_notes":
+      if (ev.meeting_id === liveMeetingId) renderLiveNotes(ev);
       break;
     case "stopped":
       $("live-flag").textContent = "processing…"; break;
@@ -164,6 +168,22 @@ function appendLive(s) {
   const live = $("live");
   live.appendChild(segEl(s));
   live.scrollTop = live.scrollHeight;
+}
+
+function renderLiveNotes(ev) {
+  const box = $("live-notes");
+  box.classList.remove("hidden");
+  let html = "<div class='ln-title'>📝 Live notes (updating…)</div>";
+  if (ev.overview) html += `<div class="ln-ov">${escapeHtml(ev.overview)}</div>`;
+  if (ev.action_items && ev.action_items.length) {
+    html += "<div class='ln-sub'>Action items so far</div><ul class='ln-ul'>";
+    ev.action_items.forEach((a) => {
+      html += `<li>${escapeHtml(a.text)}` +
+        (a.owner ? ` <span class="badge">${escapeHtml(a.owner)}</span>` : "") + "</li>";
+    });
+    html += "</ul>";
+  }
+  box.innerHTML = html;
 }
 const escapeHtml = (t) => t.replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
 
