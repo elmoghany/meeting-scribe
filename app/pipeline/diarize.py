@@ -188,13 +188,14 @@ def label_speakers(wav_path: str, segments: list[Segment]) -> list[Segment]:
     """
     import sys
 
-    from .assemble import assign_speakers
+    from .assemble import assign_speakers, renumber_speakers
 
     backend = get_settings().diarizer
     if backend == "pyannote":
         try:
             turns = diarize_pyannote(wav_path, hf_token=get_settings().hf_token)
-            return assign_speakers(segments, turns)
+            # pyannote emits SPEAKER_00/01/…; normalize to "Speaker 1/2/…".
+            return renumber_speakers(assign_speakers(segments, turns))
         except Exception as e:
             # pyannote weights gated/unavailable → degrade to key-free resemblyzer,
             # which still attempts real multi-speaker separation.

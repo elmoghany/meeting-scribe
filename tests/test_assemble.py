@@ -42,6 +42,16 @@ def test_merge_keeps_gap_split():
     assert len(assemble.merge_adjacent(segs, max_gap=1.0)) == 2
 
 
+def test_renumber_speakers():
+    segs = [_seg(0, 1, "a", "SPEAKER_02"), _seg(1, 2, "b", "SPEAKER_05"),
+            _seg(2, 3, "c", "SPEAKER_02"), _seg(3, 4, "d", "Me")]
+    out = assemble.renumber_speakers(segs)
+    assert out[0].speaker == "Speaker 1"   # SPEAKER_02 first seen
+    assert out[1].speaker == "Speaker 2"   # SPEAKER_05
+    assert out[2].speaker == "Speaker 1"   # SPEAKER_02 again -> same
+    assert out[3].speaker == "Me"          # kept untouched
+
+
 def test_rename_and_transcript():
     segs = [_seg(0, 1, "hi", "SPEAKER_00")]
     assemble.rename_speakers(segs, {"SPEAKER_00": "Sam"})

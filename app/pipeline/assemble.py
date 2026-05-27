@@ -79,6 +79,24 @@ def merge_adjacent(segments: list[Segment], max_gap: float = 1.0) -> list[Segmen
     return merged
 
 
+def renumber_speakers(segments: list[Segment], keep: tuple[str, ...] = ("Me",),
+                      ) -> list[Segment]:
+    """Relabel raw diarizer labels (e.g. pyannote 'SPEAKER_00') to friendly
+    'Speaker 1', 'Speaker 2', … by first appearance. Labels in `keep` (e.g. the
+    mic-anchored 'Me') are left untouched. Makes pyannote output match the
+    key-free backend's labeling."""
+    order: dict[str, str] = {}
+    for s in segments:
+        if s.speaker in keep:
+            continue
+        if s.speaker not in order:
+            order[s.speaker] = f"Speaker {len(order) + 1}"
+    for s in segments:
+        if s.speaker not in keep:
+            s.speaker = order[s.speaker]
+    return segments
+
+
 def rename_speakers(segments: list[Segment], mapping: dict[str, str]) -> list[Segment]:
     """Apply a {raw_label: display_name} rename, e.g. {'SPEAKER_00': 'Sam'}."""
     for s in segments:
