@@ -47,9 +47,11 @@ Tracking the autonomous feature-parity work against Otter.ai. Everything stays
 19. ✅ Meeting word-count + duration in the list
 20. ✅ "Copy" notes-to-clipboard button
 21. ✅ Polish: dark/light theme toggle, USAGE.md guide, fixed undefined --accent2
+22. ✅ Error-path tests (404/400 coverage) + cluster re-verification of full pyannote pipeline
 
 ## Next
-22. ⬜ Persistent speaker profiles (name once, matched across meetings via embeddings)
+23. ⬜ Normalize pyannote SPEAKER_00 labels → "Speaker 1/2/3" (consistency w/ resemblyzer)
+24. ⬜ Persistent speaker profiles (name once, matched across meetings via embeddings)
 14. ⬜ Slide/screenshot capture during screen-share segments
 15. ⬜ Sentiment / topic tags per meeting (lightweight, key-free)
 

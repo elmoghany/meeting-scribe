@@ -31,6 +31,40 @@ def test_set_title_blank_falls_back():
             == "Untitled meeting"
 
 
+def test_unknown_meeting_404s():
+    with TestClient(app) as c:
+        assert c.get("/api/meetings/nope").status_code == 404
+        assert c.get("/api/meetings/nope/export?fmt=md").status_code == 404
+        assert c.get("/api/meetings/nope/analytics").status_code == 404
+        assert c.get("/api/meetings/nope/audio").status_code == 404
+        assert c.post("/api/meetings/nope/title", json={"title": "x"}).status_code == 404
+
+
+def test_chat_without_transcript_404s():
+    mid = _mk("srv-no-transcript")
+    with TestClient(app) as c:
+        assert c.post(f"/api/meetings/{mid}/chat", json={"question": "hi"}).status_code == 404
+
+
+def test_empty_comment_400s():
+    mid = _mk("srv-empty-comment")
+    with TestClient(app) as c:
+        assert c.post(f"/api/meetings/{mid}/comment", json={"text": "  "}).status_code == 400
+
+
+def test_empty_search_returns_empty_list():
+    with TestClient(app) as c:
+        assert c.get("/api/search", params={"q": "   "}).json() == []
+
+
+def test_export_unknown_format_400s():
+    mid = _mk("srv-bad-fmt")
+    db.replace_segments(mid, [Segment(start=0, end=1, text="hi", speaker="Me",
+                                      source="batch")], source="batch")
+    with TestClient(app) as c:
+        assert c.get(f"/api/meetings/{mid}/export", params={"fmt": "xyz"}).status_code == 400
+
+
 def test_regenerate_notes_resummarizes():
     mid = _mk("srv-regen")
     db.replace_segments(mid, [
