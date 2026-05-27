@@ -448,6 +448,7 @@ $("ai-toggle").onclick = () => {
   $("ai-toggle").textContent = aiOpenOnly ? "(open only)" : "(all)";
   renderAllActions();
 };
+$("ai-csv").onclick = () => window.open("/api/action-items.csv?open_only=" + aiOpenOnly, "_blank");
 
 // keyboard shortcuts: "/" focus search · space play/pause · r start/stop
 document.addEventListener("keydown", (e) => {

@@ -4,6 +4,8 @@ fully unit-testable. (Markdown export lives in process.export_markdown.)
 """
 from __future__ import annotations
 
+import csv
+import io
 import json
 import re
 
@@ -64,6 +66,19 @@ def to_json(meeting: Meeting | None, summary: Summary | None,
 
 
 _WORD = re.compile(r"\b[\w']+\b")
+
+
+def action_items_csv(rows: list[dict]) -> str:
+    """CSV of action items across meetings (rows from db.all_action_items).
+    Columns: meeting, text, owner, due, done."""
+    buf = io.StringIO()
+    w = csv.writer(buf)
+    w.writerow(["meeting", "text", "owner", "due", "done"])
+    for r in rows:
+        w.writerow([r.get("meeting_title", ""), r.get("text", ""),
+                    r.get("owner") or "", r.get("due") or "",
+                    "yes" if r.get("done") else "no"])
+    return buf.getvalue()
 
 
 def talk_time(segments: list[Segment]) -> dict:

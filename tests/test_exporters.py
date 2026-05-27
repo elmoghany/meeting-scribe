@@ -44,6 +44,18 @@ def test_ts_rounding_carry():
     assert exporters._ts(2.9996) == "00:00:03,000"
 
 
+def test_action_items_csv():
+    rows = [
+        {"meeting_title": "Standup", "text": "ship v2", "owner": "Sam", "due": "Fri", "done": 0},
+        {"meeting_title": "Sync", "text": "book room", "owner": None, "due": None, "done": 1},
+    ]
+    csv_text = exporters.action_items_csv(rows)
+    lines = csv_text.strip().splitlines()
+    assert lines[0] == "meeting,text,owner,due,done"
+    assert "Standup,ship v2,Sam,Fri,no" in csv_text
+    assert "Sync,book room,,,yes" in csv_text
+
+
 def test_talk_time_analytics():
     segs = [
         Segment(start=0, end=10, text="one two three four five", speaker="Me", source="batch"),

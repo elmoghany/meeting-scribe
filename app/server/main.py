@@ -381,6 +381,15 @@ def all_action_items(open_only: bool = False, owner: str | None = None):
     return db.all_action_items(open_only=open_only, owner=owner)
 
 
+@app.get("/api/action-items.csv")
+def all_action_items_csv(open_only: bool = False, owner: str | None = None):
+    from ..pipeline import exporters
+    rows = db.all_action_items(open_only=open_only, owner=owner)
+    return PlainTextResponse(
+        exporters.action_items_csv(rows), media_type="text/csv",
+        headers={"Content-Disposition": 'attachment; filename="action-items.csv"'})
+
+
 # --------------------------------------------------------------------------- #
 # highlights + comments
 # --------------------------------------------------------------------------- #
