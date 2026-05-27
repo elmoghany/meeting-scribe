@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import sys
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 from .. import db
@@ -32,6 +32,7 @@ class PipelineResult:
     language: str | None
     duration_sec: float
     backend: str
+    speaker_embeddings: dict = field(default_factory=dict)  # {speaker: d-vector}
 
     def to_json(self) -> dict:
         return {
@@ -41,6 +42,7 @@ class PipelineResult:
             "language": self.language,
             "duration_sec": self.duration_sec,
             "backend": self.backend,
+            "speaker_embeddings": self.speaker_embeddings,
         }
 
     @staticmethod
@@ -53,7 +55,8 @@ class PipelineResult:
         items = [ActionItem(text=a["text"], owner=a.get("owner"), due=a.get("due"),
                             done=a.get("done", False)) for a in d["action_items"]]
         return PipelineResult(segs, summ, items, d.get("language"),
-                              d.get("duration_sec", 0.0), d.get("backend", "?"))
+                              d.get("duration_sec", 0.0), d.get("backend", "?"),
+                              d.get("speaker_embeddings", {}))
 
 
 def compute_pipeline(audio_dir: str, batch_model: str | None = None) -> PipelineResult:
@@ -66,6 +69,7 @@ def compute_pipeline(audio_dir: str, batch_model: str | None = None) -> Pipeline
     transcriber = Transcriber(model_name=batch_model or s.batch_model)
     segments: list[Segment] = []
     language: str | None = None
+    embeddings: dict = {}
 
     if system_path.exists():
         _log(f"transcribing system audio with {transcriber.model_name} ...")
@@ -79,6 +83,13 @@ def compute_pipeline(audio_dir: str, batch_model: str | None = None) -> Pipeline
             for seg in sys_segs:
                 if seg.speaker == "Unknown":
                     seg.speaker = "Others"
+        if s.speaker_profiles:
+            try:
+                from .diarize import speaker_embeddings as _emb
+                _log("computing speaker embeddings for profiles ...")
+                embeddings = _emb(str(system_path), sys_segs)
+            except Exception as e:
+                _log(f"speaker embeddings unavailable ({e}).")
         segments.extend(sys_segs)
 
     if mic_path.exists():
@@ -99,12 +110,44 @@ def compute_pipeline(audio_dir: str, batch_model: str | None = None) -> Pipeline
     summary, action_items = backend.summarize(segments)
     duration = max((seg.end for seg in segments), default=0.0)
     return PipelineResult(segments, summary, action_items, language, duration,
-                          backend.backend)
+                          backend.backend, embeddings)
+
+
+def apply_profiles(res: PipelineResult) -> dict:
+    """Match the result's per-speaker embeddings against stored named profiles
+    (local DB) and rename matched speakers in place. Re-keys embeddings to the
+    final labels. Returns {original_label: name} for matches. Local-side so it
+    uses the local profile DB even when compute ran on the cluster."""
+    s = get_settings()
+    if not s.speaker_profiles or not res.speaker_embeddings:
+        return {}
+    from .speakerid import match
+    profiles = db.list_profiles()
+    renames: dict[str, str] = {}
+    if profiles:
+        for label, emb in res.speaker_embeddings.items():
+            if label == "Me":
+                continue
+            hit = match(emb, profiles, threshold=s.speaker_match_threshold)
+            if hit:
+                renames[label] = hit[0]
+    if renames:
+        for seg in res.segments:
+            if seg.speaker in renames:
+                seg.speaker = renames[seg.speaker]
+    res.speaker_embeddings = {renames.get(k, k): v
+                              for k, v in res.speaker_embeddings.items()}
+    return renames
 
 
 def persist_result(meeting_id: str, res: PipelineResult) -> None:
     """Write a PipelineResult into the local DB and export Markdown."""
+    matched = apply_profiles(res)
+    if matched:
+        _log(f"recognized known speakers: {matched}")
     db.replace_segments(meeting_id, res.segments, source="batch")
+    if res.speaker_embeddings:
+        db.save_meeting_embeddings(meeting_id, res.speaker_embeddings)
     db.save_summary(meeting_id, res.summary)
     db.save_action_items(meeting_id, res.action_items)
     db.update_meeting(meeting_id, status="done", language=res.language,

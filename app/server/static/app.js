@@ -144,6 +144,30 @@ async function saveSpeakerNames() {
   if (!Object.keys(mapping).length) return;
   await post(`/api/meetings/${currentMeeting}/rename-speakers`, { mapping });
   openMeeting(currentMeeting);
+  renderProfiles();  // a rename may enroll a voice profile
+}
+
+async function renderProfiles() {
+  const box = $("profiles");
+  const ps = await api("/api/speakers").catch(() => []);
+  box.innerHTML = "";
+  if (!ps.length) {
+    box.innerHTML = `<p class="muted">None yet — rename a speaker to remember their voice across meetings.</p>`;
+    return;
+  }
+  for (const p of ps) {
+    const row = document.createElement("div"); row.className = "ai-row";
+    const name = document.createElement("span"); name.className = "ai-txt"; name.textContent = p.name;
+    const meta = document.createElement("span"); meta.className = "ai-meta"; meta.textContent = `${p.n_samples}×`;
+    const del = document.createElement("span"); del.className = "annot-del"; del.textContent = "✕";
+    del.title = "Forget this voice"; del.style.marginLeft = "6px";
+    del.onclick = async () => {
+      await api("/api/speakers/" + encodeURIComponent(p.name), { method: "DELETE" });
+      renderProfiles();
+    };
+    row.appendChild(name); row.appendChild(meta); row.appendChild(del);
+    box.appendChild(row);
+  }
 }
 
 $("btn-comment").onclick = async () => {
@@ -504,3 +528,4 @@ $("player").addEventListener("timeupdate", highlightPlaying);
 connectWS();
 refreshMeetings();
 renderAllActions();
+renderProfiles();

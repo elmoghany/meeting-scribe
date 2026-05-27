@@ -48,6 +48,10 @@ class Settings:
 
         # diarization backend: resemblyzer (key-free, default) | pyannote (gated)
         self.diarizer = os.getenv("MEETINGSCRIBE_DIARIZER", "resemblyzer")
+        # persistent speaker profiles (voice-match across meetings); needs resemblyzer
+        self.speaker_profiles = _bool("MEETINGSCRIBE_SPEAKER_PROFILES", True)
+        self.speaker_match_threshold = float(
+            os.getenv("MEETINGSCRIBE_SPEAKER_THRESHOLD", "0.75"))
 
         # notes LLM
         self.llm_backend = os.getenv("MEETINGSCRIBE_LLM_BACKEND", "llamacpp")

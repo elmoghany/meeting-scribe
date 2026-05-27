@@ -109,6 +109,25 @@ def test_meeting_embeddings_roundtrip():
     assert db.get_meeting_embedding(mid, "nope") is None
 
 
+def test_apply_profiles_recognizes_known_speaker():
+    from app.models import Summary
+    from app.pipeline.process import PipelineResult, apply_profiles
+    db.reset_connection()
+    db.upsert_profile("Bob Lee", [1.0, 0.0, 0.0])
+    res = PipelineResult(
+        segments=[Segment(start=0, end=2, text="hi", speaker="Speaker 1", source="batch"),
+                  Segment(start=2, end=4, text="ok", speaker="Speaker 2", source="batch")],
+        summary=Summary(), action_items=[], language="en", duration_sec=4.0,
+        backend="extractive",
+        speaker_embeddings={"Speaker 1": [0.98, 0.02, 0.0], "Speaker 2": [0.0, 0.0, 1.0]})
+    matched = apply_profiles(res)
+    assert matched == {"Speaker 1": "Bob Lee"}
+    assert res.segments[0].speaker == "Bob Lee"      # recognized
+    assert res.segments[1].speaker == "Speaker 2"    # unmatched, unchanged
+    assert "Bob Lee" in res.speaker_embeddings        # embeddings re-keyed
+    db.delete_profile("Bob Lee")
+
+
 def test_meeting_stats_prefers_batch():
     mid = _mk("m-stats")
     db.add_segment(mid, Segment(start=0, end=1, text="one two three",

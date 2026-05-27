@@ -206,6 +206,18 @@ def tags():
     return db.all_tags()
 
 
+@app.get("/api/speakers")
+def list_speakers():
+    """Known voice profiles (names only; embeddings stay server-side)."""
+    return [{"name": p["name"], "n_samples": p["n_samples"]} for p in db.list_profiles()]
+
+
+@app.delete("/api/speakers/{name}")
+def delete_speaker(name: str):
+    db.delete_profile(name)
+    return {"deleted": name}
+
+
 @app.get("/api/meetings/{meeting_id}")
 def meeting_detail(meeting_id: str):
     m = db.get_meeting(meeting_id)
@@ -326,12 +338,21 @@ def remove_meeting_tag(meeting_id: str, tag: str):
 @app.post("/api/meetings/{meeting_id}/rename-speakers")
 def rename_speakers(meeting_id: str, req: RenameReq):
     from ..pipeline import assemble
+    # Enroll a persistent voice profile for each rename (if we have that
+    # speaker's embedding), so this person is auto-recognized in future meetings.
+    enrolled = []
+    for old, new in req.mapping.items():
+        emb = db.get_meeting_embedding(meeting_id, old)
+        if emb and new.strip() and new != old:
+            db.upsert_profile(new, emb)
+            db.save_meeting_embeddings(meeting_id, {new: emb})
+            enrolled.append(new)
     segs = db.get_segments(meeting_id, source="batch")
     segs = assemble.rename_speakers(segs, req.mapping)
     db.replace_segments(meeting_id, segs, source="batch")
     from ..pipeline.process import export_markdown
     export_markdown(meeting_id)
-    return {"updated": len(segs)}
+    return {"updated": len(segs), "enrolled": enrolled}
 
 
 @app.post("/api/meetings/{meeting_id}/reprocess")

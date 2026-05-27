@@ -51,9 +51,12 @@ Tracking the autonomous feature-parity work against Otter.ai. Everything stays
 
 23. ✅ Normalize pyannote SPEAKER_00 labels → "Speaker 1/2/3" (consistency w/ resemblyzer)
 24. ✅ docs/ARCHITECTURE.md (module map, design decisions, extension points)
+25. ✅ Persistent speaker profiles — name a voice once, auto-recognized across
+    meetings (Resemblyzer embeddings on the cluster + cosine match + enroll-on-rename;
+    verified: 256-dim embeddings per speaker, matching unit-tested)
 
 ## Next
-25. ⬜ Persistent speaker profiles (name once, matched across meetings via embeddings)
+26. ⬜ (optional) per-segment confidence display; sentiment; further polish
 14. ⬜ Slide/screenshot capture during screen-share segments
 15. ⬜ Sentiment / topic tags per meeting (lightweight, key-free)
 

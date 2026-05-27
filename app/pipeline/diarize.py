@@ -101,6 +101,26 @@ def diarize_segments(wav_path: str, segments: list[Segment], max_speakers: int =
                                   distance_threshold, max_speakers)
 
 
+def speaker_embeddings(wav_path: str, segments: list[Segment],
+                       min_seg_sec: float = 0.6) -> dict[str, list[float]]:
+    """Mean Resemblyzer d-vector per speaker label, for persistent profiles.
+    Runs where torch/resemblyzer are available (the Cornell node)."""
+    from resemblyzer import VoiceEncoder, preprocess_wav
+
+    from .speakerid import mean_embedding
+
+    wav = preprocess_wav(wav_path)
+    sr = 16000
+    enc = VoiceEncoder(verbose=False)
+    by_spk: dict[str, list] = {}
+    for seg in segments:
+        clip = wav[int(seg.start * sr): int(seg.end * sr)]
+        if len(clip) >= int(min_seg_sec * sr):
+            by_spk.setdefault(seg.speaker, []).append(
+                enc.embed_utterance(clip).tolist())
+    return {spk: mean_embedding(vs) for spk, vs in by_spk.items() if vs}
+
+
 def labels_from_embeddings(embeds, idx_with_embed: list[int], n_segments: int,
                            distance_threshold: float, max_speakers: int = 8,
                            ) -> list[str]:
