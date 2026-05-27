@@ -89,6 +89,26 @@ def test_annotations_cascade_on_meeting_delete():
     assert db.list_annotations(mid) == []
 
 
+def test_speaker_profiles_upsert_match_delete():
+    db.reset_connection()
+    db.upsert_profile("Alice Zhang", [1.0, 0.0, 0.0])
+    db.upsert_profile("Alice Zhang", [0.9, 0.1, 0.0])  # running mean, n=2
+    profs = db.list_profiles()
+    alice = next(p for p in profs if p["name"] == "Alice Zhang")
+    assert alice["n_samples"] == 2
+    from app.pipeline.speakerid import match
+    assert match([0.95, 0.05, 0.0], profs, threshold=0.75)[0] == "Alice Zhang"
+    db.delete_profile("Alice Zhang")
+    assert not any(p["name"] == "Alice Zhang" for p in db.list_profiles())
+
+
+def test_meeting_embeddings_roundtrip():
+    mid = _mk("m-emb")
+    db.save_meeting_embeddings(mid, {"Speaker 1": [0.1, 0.2], "Speaker 2": [0.3, 0.4]})
+    assert db.get_meeting_embedding(mid, "Speaker 1") == [0.1, 0.2]
+    assert db.get_meeting_embedding(mid, "nope") is None
+
+
 def test_meeting_stats_prefers_batch():
     mid = _mk("m-stats")
     db.add_segment(mid, Segment(start=0, end=1, text="one two three",

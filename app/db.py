@@ -74,6 +74,22 @@ CREATE TABLE IF NOT EXISTS meeting_tags (
 );
 CREATE INDEX IF NOT EXISTS idx_tags_tag ON meeting_tags(tag);
 
+-- named voice profiles (persistent speaker identification)
+CREATE TABLE IF NOT EXISTS speaker_profiles (
+    name        TEXT PRIMARY KEY,
+    embedding   TEXT NOT NULL,        -- json list[float]
+    n_samples   INTEGER NOT NULL DEFAULT 1,
+    updated_at  REAL NOT NULL DEFAULT (strftime('%s','now'))
+);
+
+-- per-meeting per-speaker mean embedding (so renaming can enroll a profile)
+CREATE TABLE IF NOT EXISTS meeting_speaker_embeddings (
+    meeting_id  TEXT NOT NULL REFERENCES meetings(id) ON DELETE CASCADE,
+    speaker     TEXT NOT NULL,
+    embedding   TEXT NOT NULL,        -- json list[float]
+    PRIMARY KEY (meeting_id, speaker)
+);
+
 -- Full-text search over transcript text, kept in sync via triggers.
 CREATE VIRTUAL TABLE IF NOT EXISTS segments_fts USING fts5(
     text, speaker UNINDEXED, meeting_id UNINDEXED,
@@ -222,6 +238,58 @@ def all_tags() -> list[dict]:
             "SELECT tag, COUNT(*) n FROM meeting_tags GROUP BY tag ORDER BY n DESC, tag"
         ).fetchall()
     return [{"tag": r["tag"], "count": r["n"]} for r in rows]
+
+
+# --------------------------------------------------------------------------- #
+# speaker profiles + per-meeting embeddings
+# --------------------------------------------------------------------------- #
+def list_profiles() -> list[dict]:
+    with cursor() as c:
+        rows = c.execute(
+            "SELECT name, embedding, n_samples FROM speaker_profiles ORDER BY name"
+        ).fetchall()
+    return [{"name": r["name"], "embedding": json.loads(r["embedding"]),
+             "n_samples": r["n_samples"]} for r in rows]
+
+
+def upsert_profile(name: str, embedding: list[float]) -> None:
+    """Create or update a named voice profile, keeping a running-mean embedding."""
+    from .pipeline.speakerid import running_mean
+
+    name = name.strip()
+    if not name or not embedding:
+        return
+    with cursor() as c:
+        row = c.execute("SELECT embedding, n_samples FROM speaker_profiles WHERE name=?",
+                        (name,)).fetchone()
+        if row:
+            merged = running_mean(json.loads(row["embedding"]), row["n_samples"], embedding)
+            c.execute("UPDATE speaker_profiles SET embedding=?, n_samples=n_samples+1,"
+                      " updated_at=strftime('%s','now') WHERE name=?",
+                      (json.dumps(merged), name))
+        else:
+            c.execute("INSERT INTO speaker_profiles(name, embedding, n_samples)"
+                      " VALUES (?,?,1)", (name, json.dumps(embedding)))
+
+
+def delete_profile(name: str) -> None:
+    with cursor() as c:
+        c.execute("DELETE FROM speaker_profiles WHERE name=?", (name,))
+
+
+def save_meeting_embeddings(meeting_id: str, embeddings: dict) -> None:
+    with cursor() as c:
+        c.executemany(
+            "INSERT OR REPLACE INTO meeting_speaker_embeddings(meeting_id,speaker,embedding)"
+            " VALUES (?,?,?)",
+            [(meeting_id, spk, json.dumps(emb)) for spk, emb in embeddings.items() if emb])
+
+
+def get_meeting_embedding(meeting_id: str, speaker: str) -> list[float] | None:
+    with cursor() as c:
+        r = c.execute("SELECT embedding FROM meeting_speaker_embeddings"
+                      " WHERE meeting_id=? AND speaker=?", (meeting_id, speaker)).fetchone()
+    return json.loads(r["embedding"]) if r else None
 
 
 def delete_meeting(meeting_id: str) -> None:
