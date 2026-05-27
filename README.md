@@ -6,7 +6,7 @@
 Live transcription · speaker diarization · AI summaries · action items · "ask your meeting" chat.
 100% local. No API keys. MIT licensed.
 
-🌐 **Website:** [elmoghany.github.io/meetingnotes](https://elmoghany.github.io/meetingnotes/)
+🌐 **Website:** [elmoghany.github.io/meetingnotes](https://elmoghany.github.io/meetingnotes/) · 📖 **[Usage guide](docs/USAGE.md)**
 
 </div>
 

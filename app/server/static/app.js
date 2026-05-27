@@ -477,6 +477,15 @@ $("ai-toggle").onclick = () => {
 };
 $("ai-csv").onclick = () => window.open("/api/action-items.csv?open_only=" + aiOpenOnly, "_blank");
 
+// theme toggle (persisted)
+function applyTheme(t) {
+  document.documentElement.dataset.theme = t;
+  try { localStorage.setItem("ms-theme", t); } catch {}
+}
+$("theme-btn").onclick = () =>
+  applyTheme(document.documentElement.dataset.theme === "light" ? "dark" : "light");
+applyTheme((() => { try { return localStorage.getItem("ms-theme"); } catch { return null; } })() || "dark");
+
 // keyboard shortcuts: "/" focus search · space play/pause · r start/stop
 document.addEventListener("keydown", (e) => {
   const el = document.activeElement;

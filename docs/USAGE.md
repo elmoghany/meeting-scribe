@@ -1,0 +1,61 @@
+# Using MeetingScribe
+
+A quick guide to recording, reviewing, and sharing meeting notes — all locally.
+
+## 1. Start the dashboard
+```bash
+cd meeting-scribe
+.venv\Scripts\activate          # Windows (or source .venv/bin/activate)
+meetingscribe serve             # → http://127.0.0.1:8765
+```
+First run downloads the live Whisper model. To pre-download everything for
+fully-offline use: `python -m scripts.download_models`.
+
+## 2. Record a meeting
+1. Join your Google Meet / Zoom call as usual.
+2. In the dashboard: enter a **title**, pick the **platform**, choose a
+   **language** (or leave auto-detect), and click **● Start** (or press `r`).
+   - **Mic (Me)** captures your microphone; **System (Others)** captures the
+     call audio via WASAPI loopback. Keep both on for a full transcript.
+3. Watch the **live transcript** stream in, with **live notes** (rolling summary
+   + action items) updating as you talk.
+4. Click **■ Stop** (or `r`) when done. The high-quality batch pass runs
+   automatically (on the Cornell GPU if configured, else locally) and produces
+   the polished transcript, speaker labels, summary, and action items.
+
+## 3. Review
+Open a meeting from the list to:
+- **Play the audio** — click any transcript line to jump there; the playing line
+  highlights. (`space` plays/pauses.)
+- **Rename speakers** — turn "Speaker 1" into real names; it updates everywhere.
+- **Tick off action items**, or see them all in the left-panel **task tracker**
+  (toggle open-only, export **CSV**).
+- **Star** key lines and add **comments**.
+- **Tag** the meeting and filter your history by tag.
+- **Ask the meeting** — "What did we decide about the budget?"
+- **Find in transcript** with the search box (`/` focuses global search).
+- See **topics** and **talk-time** analytics.
+
+## 4. Share / export
+- **Copy** — full notes to clipboard for email/Slack.
+- **Export** menu — Markdown, plain text, **SRT/VTT** subtitles, or JSON.
+- **Webhook** — set `MEETINGSCRIBE_WEBHOOK_URL` to auto-post notes to
+  Slack/Discord/Notion/Zapier when a meeting finishes.
+
+## 5. Auto-record scheduled meetings
+- **Zoom:** connect via OAuth (`/oauth/zoom/start`) — see the README.
+- **Any calendar:** set `CALENDAR_ICS_URL` to your calendar's secret `.ics` link
+  (Google/Outlook/Apple all provide one — no OAuth). MeetingScribe starts
+  capture when a meeting begins and stops after its window.
+
+## Keyboard shortcuts
+| Key | Action |
+|---|---|
+| `/` | Focus search |
+| `space` | Play/pause audio (when a meeting is open) |
+| `r` | Start / stop recording |
+
+## Where your data lives
+Everything stays under `C:\cornell\meetingnotes` (configurable via
+`MEETINGSCRIBE_DATA_DIR`): SQLite DB, audio recordings, and Markdown notes.
+Use **Free audio** on a meeting to delete its WAVs while keeping the notes.

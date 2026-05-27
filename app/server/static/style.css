@@ -1,7 +1,17 @@
 :root {
   --bg: #0f1115; --card: #181b22; --line: #262a33; --fg: #e6e8ee;
-  --muted: #8b93a4; --accent: #6ea8fe; --danger: #ff6b6b; --ok: #4ade80;
+  --muted: #8b93a4; --accent: #6ea8fe; --accent2: #a78bfa; --danger: #ff6b6b; --ok: #4ade80;
 }
+:root[data-theme="light"] {
+  --bg: #f6f7f9; --card: #ffffff; --line: #e2e6ee; --fg: #1a1e27;
+  --muted: #5b6472; --accent: #2563eb; --accent2: #7c3aed; --danger: #dc2626; --ok: #16a34a;
+}
+.theme-btn {
+  margin-left: auto; background: transparent; color: var(--fg);
+  border: 1px solid var(--line); border-radius: 8px; padding: 4px 9px;
+  cursor: pointer; font-size: 14px; line-height: 1;
+}
+.theme-btn:hover { border-color: var(--accent); }
 * { box-sizing: border-box; }
 body {
   margin: 0; font: 15px/1.5 -apple-system, Segoe UI, Roboto, sans-serif;
@@ -16,7 +26,7 @@ header h1 { font-size: 18px; margin: 0; }
   font-size: 11px; color: var(--muted); border: 1px solid var(--line);
   padding: 2px 8px; border-radius: 999px;
 }
-.dot { width: 10px; height: 10px; border-radius: 50%; background: var(--danger); margin-left: auto; }
+.dot { width: 10px; height: 10px; border-radius: 50%; background: var(--danger); margin-left: 10px; }
 .dot.on { background: var(--ok); }
 main { display: grid; grid-template-columns: 360px 1fr; gap: 16px; padding: 16px; }
 .card {
