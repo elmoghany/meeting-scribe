@@ -64,6 +64,8 @@ ul { list-style: none; padding: 0; margin: 0; }
 .seg { padding: 4px 6px; border-bottom: 1px solid #1c2029; border-radius: 6px; cursor: pointer; }
 .seg:hover { background: #1a1f29; }
 .seg.playing { background: #1d2740; box-shadow: inset 3px 0 0 var(--accent); }
+.seg.match { background: #3a3f10; }
+.t-search { width: 160px; display: inline-block; padding: 3px 8px; font-size: 12px; margin: 0 6px 0 0; text-transform: none; letter-spacing: 0; }
 .seg .who { font-weight: 600; color: var(--accent); margin-right: 6px; }
 .seg .who.me { color: var(--ok); }
 .seg .ts { color: var(--muted); font-size: 11px; margin-right: 6px; }

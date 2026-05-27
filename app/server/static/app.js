@@ -122,6 +122,19 @@ function renderAnnotations() {
   }
 }
 
+$("t-search").addEventListener("input", () => {
+  const q = $("t-search").value.trim().toLowerCase();
+  let first = null, n = 0;
+  $("transcript").querySelectorAll(".seg").forEach((el) => {
+    el.classList.remove("match");
+    if (q && el.textContent.toLowerCase().includes(q)) {
+      el.classList.add("match"); n++; if (!first) first = el;
+    }
+  });
+  $("t-search-n").textContent = q ? `${n} match${n === 1 ? "" : "es"}` : "";
+  if (first) first.scrollIntoView({ block: "center" });
+});
+
 async function saveSpeakerNames() {
   const mapping = {};
   $("speakers").querySelectorAll(".spk-in").forEach((i) => {
@@ -346,6 +359,7 @@ async function openMeeting(id) {
   const t = $("transcript"); t.innerHTML = "";
   for (const s of d.segments) t.appendChild(segEl(s, true));
   renderAnnotations();
+  $("t-search").value = ""; $("t-search-n").textContent = "";
   $("chat-answer").innerHTML = "";
 }
 
