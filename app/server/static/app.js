@@ -367,6 +367,15 @@ async function openMeeting(id) {
   $("chat-answer").innerHTML = "";
 }
 
+$("btn-copy").onclick = async () => {
+  const b = $("btn-copy"); const orig = b.textContent;
+  try {
+    const md = await api(`/api/meetings/${currentMeeting}/export?fmt=md`);
+    await navigator.clipboard.writeText(md);
+    b.textContent = "Copied!";
+  } catch { b.textContent = "Copy failed"; }
+  setTimeout(() => { b.textContent = orig; }, 1300);
+};
 $("export-fmt").onchange = (e) => {
   const fmt = e.target.value;
   if (!fmt || !currentMeeting) return;
