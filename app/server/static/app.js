@@ -449,6 +449,20 @@ $("ai-toggle").onclick = () => {
   renderAllActions();
 };
 
+// keyboard shortcuts: "/" focus search · space play/pause · r start/stop
+document.addEventListener("keydown", (e) => {
+  const el = document.activeElement;
+  if (el && /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName)) return;
+  if (e.key === "/") { e.preventDefault(); $("search").focus(); }
+  else if (e.key === " " && currentMeeting && $("player").getAttribute("src")) {
+    e.preventDefault();
+    const p = $("player"); p.paused ? p.play() : p.pause();
+  } else if (e.key.toLowerCase() === "r") {
+    if (!$("btn-start").disabled) $("btn-start").click();
+    else if (!$("btn-stop").disabled) $("btn-stop").click();
+  }
+});
+
 $("player").addEventListener("timeupdate", highlightPlaying);
 connectWS();
 refreshMeetings();

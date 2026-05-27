@@ -41,9 +41,10 @@ Tracking the autonomous feature-parity work against Otter.ai. Everything stays
 13. ✅ Auto topic keywords per meeting (key-free)
 14. ✅ pyannote 4.x (community-1) enabled + verified — high-quality diarization default
 15. ✅ Language selection for transcription (auto / en / es / fr / de / …) — Otter multi-language
+16. ✅ Keyboard shortcuts (/ search · space play/pause · r record)
 
 ## Next
-16. ⬜ Persistent speaker profiles (name once, matched across meetings via embeddings)
+17. ⬜ Persistent speaker profiles (name once, matched across meetings via embeddings)
 14. ⬜ Slide/screenshot capture during screen-share segments
 15. ⬜ Sentiment / topic tags per meeting (lightweight, key-free)
 
