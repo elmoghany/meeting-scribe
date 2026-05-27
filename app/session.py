@@ -24,8 +24,9 @@ Emit = Callable[[dict], None]
 class MeetingSession:
     def __init__(self, title: str = "Untitled meeting", platform: str = "other",
                  emit: Emit | None = None, capture_mic: bool = True,
-                 capture_system: bool = True):
+                 capture_system: bool = True, language: str | None = None):
         s = get_settings()
+        self.language = language or None  # forced ASR language; None = auto-detect
         self.meeting = Meeting(
             id=time.strftime("%Y%m%d-%H%M%S") + "-" + uuid.uuid4().hex[:6],
             title=title, platform=platform, started_at=time.time(), status="recording",
@@ -64,7 +65,8 @@ class MeetingSession:
             speaker = "Me" if stream == "mic" else "Others"
             try:
                 segs = transcriber.transcribe_window(
-                    samples, t_offset=t_start, speaker=speaker, source="live")
+                    samples, t_offset=t_start, speaker=speaker, source="live",
+                    language=self.language)
             except Exception as e:
                 self.emit({"type": "error", "message": f"live ASR: {e}"})
                 continue

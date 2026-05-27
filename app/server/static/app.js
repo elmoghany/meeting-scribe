@@ -195,6 +195,7 @@ $("btn-start").onclick = async () => {
       platform: $("platform").value,
       capture_mic: $("cap-mic").checked,
       capture_system: $("cap-sys").checked,
+      language: $("language").value || null,
     });
     $("btn-start").disabled = true; $("btn-stop").disabled = false;
     $("rec-status").textContent = "Recording " + m.id;

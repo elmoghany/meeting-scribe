@@ -87,6 +87,7 @@ class StartReq(BaseModel):
     platform: str = "other"
     capture_mic: bool = True
     capture_system: bool = True
+    language: str | None = None  # ISO code (en/es/fr/…) or None for auto-detect
 
 
 class ChatReq(BaseModel):
@@ -111,14 +112,15 @@ class TitleReq(BaseModel):
 # recording control
 # --------------------------------------------------------------------------- #
 def _start_recording(title: str, platform: str, capture_mic: bool = True,
-                     capture_system: bool = True):
+                     capture_system: bool = True, language: str | None = None):
     """Start the single active recording. Raises RuntimeError on conflict."""
     global _session
     with _session_lock:
         if _session and _session.is_recording:
             raise RuntimeError("A recording is already in progress.")
         _session = MeetingSession(title=title, platform=platform, emit=_emit,
-                                  capture_mic=capture_mic, capture_system=capture_system)
+                                  capture_mic=capture_mic, capture_system=capture_system,
+                                  language=language)
         try:
             return _session.start()
         except Exception:
@@ -153,7 +155,7 @@ def _stop_recording() -> dict:
 def record_start(req: StartReq):
     try:
         meeting = _start_recording(req.title, req.platform, req.capture_mic,
-                                   req.capture_system)
+                                   req.capture_system, req.language)
     except RuntimeError as e:
         raise HTTPException(409 if "already" in str(e) else 500, str(e))
     except Exception as e:

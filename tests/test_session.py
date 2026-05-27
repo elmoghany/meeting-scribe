@@ -29,6 +29,14 @@ def test_live_notes_emitted_after_n_segments():
     assert any("report" in a["text"].lower() for a in n["action_items"])
 
 
+def test_session_stores_language():
+    s = MeetingSession(title="t", language="es", capture_mic=False, capture_system=True)
+    assert s.language == "es"
+    # empty/None -> auto-detect (None)
+    assert MeetingSession(title="t", language="", capture_mic=False).language is None
+    assert MeetingSession(title="t", capture_mic=False).language is None
+
+
 def test_live_notes_not_emitted_too_early():
     events = []
     sess = MeetingSession(title="t", emit=lambda e: events.append(e),
