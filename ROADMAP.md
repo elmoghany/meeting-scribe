@@ -44,9 +44,10 @@ Tracking the autonomous feature-parity work against Otter.ai. Everything stays
 16. ✅ Keyboard shortcuts (/ search · space play/pause · r record)
 17. ✅ CSV export of all action items (task tracker)
 18. ✅ Search-within-meeting (highlight + jump + match count)
+19. ✅ Meeting word-count + duration in the list
 
 ## Next
-19. ⬜ Persistent speaker profiles (name once, matched across meetings via embeddings)
+20. ⬜ Persistent speaker profiles (name once, matched across meetings via embeddings)
 14. ⬜ Slide/screenshot capture during screen-share segments
 15. ⬜ Sentiment / topic tags per meeting (lightweight, key-free)
 

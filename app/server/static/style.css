@@ -52,6 +52,7 @@ ul { list-style: none; padding: 0; margin: 0; }
 #meeting-list li:hover { background: #1d212b; }
 #meeting-list li.active { border-color: var(--accent); background: #1d212b; }
 #meeting-list .mtitle { font-weight: 600; }
+#meeting-list .mstat { font-size: 11px; opacity: .75; margin-top: 2px; }
 .badge { font-size: 10px; padding: 1px 6px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); }
 #live, #transcript { max-height: 55vh; overflow: auto; }
 #live-notes { background: #11161f; border: 1px solid var(--line); border-left: 3px solid var(--accent2);

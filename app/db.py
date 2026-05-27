@@ -175,6 +175,25 @@ def list_meetings(limit: int = 100, tag: str | None = None) -> list[Meeting]:
     return [_row_to_meeting(r) for r in rows]
 
 
+def meeting_stats() -> dict:
+    """Per-meeting {segments, words} for the list view (one query). Prefers the
+    polished 'batch' transcript; falls back to 'live'. Word count is a fast
+    space-based approximation."""
+    with cursor() as c:
+        rows = c.execute(
+            "SELECT meeting_id, source, COUNT(*) n,"
+            " SUM(LENGTH(text) - LENGTH(REPLACE(text, ' ', '')) + 1) w"
+            " FROM segments GROUP BY meeting_id, source").fetchall()
+    by: dict[str, dict] = {}
+    for r in rows:
+        by.setdefault(r["meeting_id"], {})[r["source"]] = (r["n"], int(r["w"] or 0))
+    out = {}
+    for mid, srcs in by.items():
+        n, w = srcs.get("batch") or srcs.get("live") or (0, 0)
+        out[mid] = {"segments": n, "words": w}
+    return out
+
+
 def add_tag(meeting_id: str, tag: str) -> None:
     tag = tag.strip().lower()
     if not tag:

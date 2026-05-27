@@ -89,6 +89,17 @@ def test_annotations_cascade_on_meeting_delete():
     assert db.list_annotations(mid) == []
 
 
+def test_meeting_stats_prefers_batch():
+    mid = _mk("m-stats")
+    db.add_segment(mid, Segment(start=0, end=1, text="one two three",
+                                speaker="Me", source="live"))
+    db.replace_segments(mid, [Segment(start=0, end=1, text="alpha beta",
+                                      speaker="Me", source="batch")], source="batch")
+    st = db.meeting_stats()[mid]
+    assert st["segments"] == 1   # batch preferred over the live draft
+    assert st["words"] == 2      # "alpha beta"
+
+
 def test_all_action_items_across_meetings():
     a = _mk("m-ai-a")
     b = _mk("m-ai-b")

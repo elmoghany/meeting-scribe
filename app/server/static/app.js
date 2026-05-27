@@ -239,9 +239,13 @@ async function refreshMeetings() {
     if (m.id === currentMeeting) li.className = "active";
     const when = m.started_at ? new Date(m.started_at * 1000).toLocaleString() : "";
     const tagHtml = (m.tags || []).map((t) => `<span class="badge tagb">${escapeHtml(t)}</span>`).join(" ");
+    const mins = m.duration_sec ? `${Math.round(m.duration_sec / 60)} min` : "";
+    const words = m.stats && m.stats.words ? `${m.stats.words} words` : "";
+    const stat = [mins, words].filter(Boolean).join(" · ");
     li.innerHTML = `<div class="mtitle">${escapeHtml(m.title)}</div>` +
       `<div class="muted">${when} · <span class="badge">${m.platform}</span> ` +
-      `<span class="badge">${m.status}</span> ${tagHtml}</div>`;
+      `<span class="badge">${m.status}</span> ${tagHtml}</div>` +
+      (stat ? `<div class="muted mstat">${stat}</div>` : "");
     li.onclick = () => openMeeting(m.id);
     ul.appendChild(li);
   }

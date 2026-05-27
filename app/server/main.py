@@ -191,10 +191,12 @@ def devices():
 # --------------------------------------------------------------------------- #
 @app.get("/api/meetings")
 def meetings(tag: str | None = None):
+    stats = db.meeting_stats()
     out = []
     for m in db.list_meetings(tag=tag):
         d = m.to_dict()
         d["tags"] = db.get_tags(m.id)
+        d["stats"] = stats.get(m.id, {"segments": 0, "words": 0})
         out.append(d)
     return out
 
