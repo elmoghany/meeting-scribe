@@ -6,7 +6,7 @@
 Live transcription · speaker diarization · AI summaries · action items · "ask your meeting" chat.
 100% local. No API keys. MIT licensed.
 
-[![CI](https://github.com/elmoghany/meeting-scribe/actions/workflows/ci.yml/badge.svg)](https://github.com/elmoghany/meeting-scribe/actions/workflows/ci.yml) · [WER 3.8% on real YouTube audio](docs/VERIFICATION.md)
+[![CI](https://github.com/elmoghany/meeting-scribe/actions/workflows/ci.yml/badge.svg)](https://github.com/elmoghany/meeting-scribe/actions/workflows/ci.yml) · [WER 3.8% single-speaker · 8.4% two-speaker](docs/VERIFICATION.md)
 
 🌐 **Website:** [elmoghany.github.io/meetingnotes](https://elmoghany.github.io/meetingnotes/) · 📖 **[Usage](docs/USAGE.md)** · 🏗 **[Architecture](docs/ARCHITECTURE.md)** · 🤖 **[Headless join-bot](bot/README.md)** · 🤝 **[Contributing](CONTRIBUTING.md)**
 

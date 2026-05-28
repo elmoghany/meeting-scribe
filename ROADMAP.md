@@ -76,9 +76,13 @@ Tracking the autonomous feature-parity work against Otter.ai. Everything stays
 37. ✅ CONTRIBUTING.md (dev setup, tests, CI, conventions)
 38. ✅ scripts/verify_youtube.py — real-world test against a YouTube video
     (yt-dlp + full pipeline + WER vs YouTube auto-captions; Markdown report).
-    Verified on Steve Jobs's Stanford Commencement (5 min, small.en):
-    **WER = 3.8%** (28 edits / 743 ref words), pipeline runtime 112s,
-    1 speaker correctly detected. Artifact: docs/VERIFICATION.md.
+    Two runs documented in docs/VERIFICATION.md:
+    - **Single-speaker** Steve Jobs Stanford Commencement (resemblyzer):
+      WER 3.8% (28/743), 112s runtime, 1 speaker.
+    - **Two-speaker** Lex Fridman Podcast #333 w/ Karpathy (pyannote):
+      WER 8.4% (77/919), 765s runtime, **2 speakers correctly detected**,
+      speaker assignment verified by sample (Lex's intro → Speaker 2,
+      Karpathy's responses → Speaker 1).
 14. ⬜ Slide/screenshot capture during screen-share segments
 15. ⬜ Sentiment / topic tags per meeting (lightweight, key-free)
 
