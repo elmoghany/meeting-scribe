@@ -82,6 +82,30 @@ def test_auto_stop_after_scheduled_end(monkeypatch):
     assert ar._active is None
 
 
+def test_bot_dispatched_for_zoom_with_join_url(monkeypatch):
+    import time as _t
+    monkeypatch.setenv("MEETINGSCRIBE_BOT_ENABLED", "1")
+    get_settings.cache_clear()
+
+    fake_zoom = _FakeZoom([{"id": "z9", "topic": "Sales call",
+                            "start_time": _t.strftime("%Y-%m-%dT%H:%M:%SZ",
+                                                       _t.gmtime(_t.time() + 30)),
+                            "duration": 30,
+                            "join_url": "https://zoom.us/j/123?pwd=x"}])
+    monkeypatch.setattr(scheduler, "zoom", fake_zoom)
+
+    bot_calls, start_calls = [], []
+    ar = scheduler.AutoRecorder(
+        start_fn=lambda t, p: start_calls.append((t, p)) or "x",
+        stop_fn=lambda: None,
+        is_recording_fn=lambda: False,
+        bot_fn=lambda topic, url: bot_calls.append((topic, url)),
+    )
+    ar._tick(get_settings())
+    assert bot_calls == [("Sales call", "https://zoom.us/j/123?pwd=x")]
+    assert start_calls == []  # bot took over; local capture skipped
+
+
 def test_ics_source_triggers_recording(monkeypatch):
     import time as _t
     from datetime import datetime, timezone

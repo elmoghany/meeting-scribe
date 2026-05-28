@@ -31,9 +31,14 @@ def parse_zoom_time(iso: str) -> float:
 
 
 class AutoRecorder(threading.Thread):
-    def __init__(self, start_fn: StartFn, stop_fn: StopFn, is_recording_fn: IsRecFn):
+    def __init__(self, start_fn: StartFn, stop_fn: StopFn, is_recording_fn: IsRecFn,
+                 bot_fn=None):
         super().__init__(daemon=True, name="auto-recorder")
         self._start, self._stop, self._rec = start_fn, stop_fn, is_recording_fn
+        # bot_fn(topic: str, join_url: str) -> None — runs the headless bot in
+        # a background thread; if provided and the candidate has a join URL,
+        # the bot is dispatched instead of local capture.
+        self._bot_fn = bot_fn
         self._run = threading.Event()
         self._run.set()
         self._started_ids: set[str] = set()
@@ -71,7 +76,12 @@ class AutoRecorder(threading.Thread):
                 continue
             # start if the meeting begins within the lead window (or just began)
             if -s.autostart_buffer_sec <= (c["start"] - now) <= s.autostart_lead_sec:
-                if not self._rec():
+                # Prefer the headless bot when the candidate has a join URL.
+                if self._bot_fn and s.bot_enabled and c.get("join_url"):
+                    self._bot_fn(c["topic"], c["join_url"])
+                    self._started_ids.add(c["id"])
+                    # bot manages its own end; we don't set _active for stop
+                elif not self._rec():
                     self._start(c["topic"], c["platform"])
                     self._started_ids.add(c["id"])
                     self._active = (c["id"], now + c["dur"] * 60 + s.autostart_buffer_sec)
@@ -87,7 +97,8 @@ class AutoRecorder(threading.Thread):
                         out.append({"id": "zoom:" + m["id"], "topic": m["topic"],
                                     "platform": "zoom",
                                     "start": parse_zoom_time(m["start_time"]),
-                                    "dur": (m.get("duration") or 60)})
+                                    "dur": (m.get("duration") or 60),
+                                    "join_url": m.get("join_url")})
         except Exception as e:
             self.last_error = f"zoom: {e}"
         text = self._load_ics(s)

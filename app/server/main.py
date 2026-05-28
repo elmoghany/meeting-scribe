@@ -38,6 +38,7 @@ async def lifespan(_app: "FastAPI"):
             start_fn=lambda title, platform: _start_recording(title, platform).id,
             stop_fn=_stop_recording,
             is_recording_fn=lambda: bool(_session and _session.is_recording),
+            bot_fn=_bot_record,
         )
         _auto.start()
     yield
@@ -126,6 +127,40 @@ def _start_recording(title: str, platform: str, capture_mic: bool = True,
         except Exception:
             _session = None
             raise
+
+
+def _bot_record(title: str, join_url: str) -> None:
+    """Dispatch the headless Meeting SDK bot for a scheduled Zoom meeting.
+    Runs in a background thread: joins the call, records audio, then triggers
+    the batch pipeline. Errors are surfaced as 'error' events; never raises."""
+    import time
+    import uuid
+
+    from ..models import Meeting
+
+    mid = time.strftime("%Y%m%d-%H%M%S") + "-bot-" + uuid.uuid4().hex[:6]
+
+    def _bg():
+        try:
+            from bot.runner import parse_join_url, run_bot
+            mn, pwd = parse_join_url(join_url)
+            db.create_meeting(Meeting(id=mid, title=title, platform="zoom",
+                                      started_at=time.time(), status="recording"))
+            _emit({"type": "bot_started", "meeting_id": mid, "title": title})
+            info = run_bot(meeting_number=mn, passcode=pwd, meeting_id=mid,
+                           join_url=join_url, name=get_settings().bot_display_name)
+            db.update_meeting(mid, ended_at=time.time(), status="processing",
+                              duration_sec=info.get("duration_sec"))
+            _emit({"type": "bot_finished", "meeting_id": mid,
+                   "audio": info.get("audio"), "rc": info.get("returncode")})
+            run_batch(mid, info["audio_dir"], progress=lambda m: _emit(
+                {"type": "progress", "meeting_id": mid, "message": str(m)}))
+            _emit({"type": "processed", "meeting_id": mid})
+        except Exception as e:
+            db.update_meeting(mid, status="error")
+            _emit({"type": "error", "meeting_id": mid, "message": f"bot: {e}"})
+
+    threading.Thread(target=_bg, daemon=True, name=f"bot-{mid}").start()
 
 
 def _stop_recording() -> dict:
