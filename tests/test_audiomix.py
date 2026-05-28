@@ -28,3 +28,23 @@ def test_single_stream_ok(tmp_path):
 
 def test_no_audio_returns_none(tmp_path):
     assert ensure_meeting_wav(tmp_path) is None
+
+
+def test_cache_invalidates_when_source_is_newer(tmp_path):
+    import os
+    sr = 16000
+    src = tmp_path / "system.wav"
+    sf.write(src, (np.ones(sr) * 0.3).astype(np.float32), sr)
+    out = ensure_meeting_wav(tmp_path)
+    assert out and out.exists()
+    cache_mtime = out.stat().st_mtime
+
+    # Re-record with a louder signal AFTER the cache was written.
+    sf.write(src, (np.ones(sr) * 0.9).astype(np.float32), sr)
+    os.utime(src, (cache_mtime + 5, cache_mtime + 5))
+
+    out2 = ensure_meeting_wav(tmp_path)
+    audio, _ = sf.read(str(out2), dtype="float32")
+    peak = float(np.max(np.abs(audio)))
+    assert peak > 0.6, f"cache returned stale quiet audio (peak={peak})"
+    assert out2.stat().st_mtime > cache_mtime    # rewrote the cache

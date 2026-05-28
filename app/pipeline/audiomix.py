@@ -11,22 +11,29 @@ import numpy as np
 
 def ensure_meeting_wav(rec_dir: str | Path, sample_rate: int = 16000) -> Path | None:
     """Mix mic.wav + system.wav into meeting.wav (cached). Returns the path, or
-    None if no source audio exists."""
+    None if no source audio exists.
+
+    Re-mixes if the cache is older than any source (so a re-recording invalidates
+    the stale mix automatically — was a real bug; the original short-circuit on
+    'cache exists' silently served stale audio after Reprocess).
+    """
     import soundfile as sf
 
     rec = Path(rec_dir)
     out = rec / "meeting.wav"
-    if out.exists():
-        return out
+    sources = [rec / "mic.wav", rec / "system.wav"]
+    existing = [p for p in sources if p.exists()]
+    if out.exists() and existing:
+        out_mtime = out.stat().st_mtime
+        if all(p.stat().st_mtime <= out_mtime for p in existing):
+            return out  # cache fresh — reuse
 
     tracks: list[np.ndarray] = []
-    for name in ("mic.wav", "system.wav"):
-        p = rec / name
-        if p.exists():
-            a, _sr = sf.read(str(p), dtype="float32", always_2d=False)
-            if a.ndim > 1:
-                a = a.mean(axis=1)
-            tracks.append(a)
+    for p in existing:
+        a, _sr = sf.read(str(p), dtype="float32", always_2d=False)
+        if a.ndim > 1:
+            a = a.mean(axis=1)
+        tracks.append(a)
     if not tracks:
         return None
 

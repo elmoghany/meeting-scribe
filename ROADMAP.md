@@ -72,6 +72,8 @@ Tracking the autonomous feature-parity work against Otter.ai. Everything stays
 34. ✅ Richer extractive summary — near-duplicate suppression (stemmed-token Jaccard)
     for key_points + decisions so repeated discussion doesn't crowd the summary
 35. ✅ Markdown export now embeds Topics + Sentiment + Talk-time table
+36. ✅ Fix audiomix cache invalidation (re-mix when source WAVs are newer)
+37. ✅ CONTRIBUTING.md (dev setup, tests, CI, conventions)
 14. ⬜ Slide/screenshot capture during screen-share segments
 15. ⬜ Sentiment / topic tags per meeting (lightweight, key-free)
 

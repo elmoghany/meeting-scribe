@@ -8,7 +8,7 @@ Live transcription · speaker diarization · AI summaries · action items · "as
 
 [![CI](https://github.com/elmoghany/meeting-scribe/actions/workflows/ci.yml/badge.svg)](https://github.com/elmoghany/meeting-scribe/actions/workflows/ci.yml)
 
-🌐 **Website:** [elmoghany.github.io/meetingnotes](https://elmoghany.github.io/meetingnotes/) · 📖 **[Usage](docs/USAGE.md)** · 🏗 **[Architecture](docs/ARCHITECTURE.md)** · 🤖 **[Headless join-bot](bot/README.md)**
+🌐 **Website:** [elmoghany.github.io/meetingnotes](https://elmoghany.github.io/meetingnotes/) · 📖 **[Usage](docs/USAGE.md)** · 🏗 **[Architecture](docs/ARCHITECTURE.md)** · 🤖 **[Headless join-bot](bot/README.md)** · 🤝 **[Contributing](CONTRIBUTING.md)**
 
 </div>
 
