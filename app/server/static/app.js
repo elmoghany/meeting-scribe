@@ -161,16 +161,35 @@ async function renderProfiles() {
   }
   for (const p of ps) {
     const row = document.createElement("div"); row.className = "ai-row";
-    const name = document.createElement("span"); name.className = "ai-txt"; name.textContent = p.name;
+    const name = document.createElement("span");
+    name.className = "ai-txt prof-name"; name.textContent = p.name;
+    name.title = "Click to see meetings with this voice";
     const meta = document.createElement("span"); meta.className = "ai-meta"; meta.textContent = `${p.n_samples}×`;
     const del = document.createElement("span"); del.className = "annot-del"; del.textContent = "✕";
     del.title = "Forget this voice"; del.style.marginLeft = "6px";
-    del.onclick = async () => {
+    del.onclick = async (e) => {
+      e.stopPropagation();
       await api("/api/speakers/" + encodeURIComponent(p.name), { method: "DELETE" });
       renderProfiles();
     };
+    const sub = document.createElement("div"); sub.className = "prof-sub hidden";
     row.appendChild(name); row.appendChild(meta); row.appendChild(del);
-    box.appendChild(row);
+    box.appendChild(row); box.appendChild(sub);
+
+    name.onclick = async () => {
+      if (!sub.classList.contains("hidden")) { sub.classList.add("hidden"); return; }
+      sub.classList.remove("hidden");
+      if (!sub.dataset.loaded) {
+        const ms = await api(`/api/speakers/${encodeURIComponent(p.name)}/meetings`).catch(() => []);
+        sub.innerHTML = ms.length
+          ? ms.map((m) => `<div class="prof-mtg" data-id="${m.meeting_id}">${escapeHtml(m.title)} <span class="muted">${new Date(m.started_at * 1000).toLocaleDateString()}</span></div>`).join("")
+          : '<div class="muted prof-mtg">(no meetings yet)</div>';
+        sub.querySelectorAll(".prof-mtg[data-id]").forEach((el) => {
+          el.onclick = () => openMeeting(el.dataset.id);
+        });
+        sub.dataset.loaded = "1";
+      }
+    };
   }
 }
 

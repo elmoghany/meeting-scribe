@@ -109,6 +109,22 @@ def test_meeting_embeddings_roundtrip():
     assert db.get_meeting_embedding(mid, "nope") is None
 
 
+def test_profile_meetings_lists_appearances():
+    a = _mk("m-prof-a")
+    b = _mk("m-prof-b")
+    c = _mk("m-prof-c")
+    db.save_meeting_embeddings(a, {"Alice": [0.1, 0.2]})
+    db.save_meeting_embeddings(b, {"Alice": [0.3, 0.4], "Bob": [0.5, 0.6]})
+    # c has no Alice; should be excluded
+    db.save_meeting_embeddings(c, {"Bob": [0.7, 0.8]})
+    rows = db.profile_meetings("Alice")
+    ids = {r["meeting_id"] for r in rows}
+    assert ids == {a, b}
+    bob = db.profile_meetings("Bob")
+    assert {r["meeting_id"] for r in bob} == {b, c}
+    assert db.profile_meetings("Nobody") == []
+
+
 def test_apply_profiles_recognizes_known_speaker():
     from app.models import Summary
     from app.pipeline.process import PipelineResult, apply_profiles

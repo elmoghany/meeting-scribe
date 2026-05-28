@@ -290,6 +290,21 @@ def save_meeting_embeddings(meeting_id: str, embeddings: dict) -> None:
             [(meeting_id, spk, json.dumps(emb)) for spk, emb in embeddings.items() if emb])
 
 
+def profile_meetings(name: str, limit: int = 50) -> list[dict]:
+    """Meetings where a named voice profile appears (post-apply_profiles rename).
+    Joins meeting_speaker_embeddings with meetings on the matching speaker label."""
+    with cursor() as c:
+        rows = c.execute(
+            "SELECT mse.meeting_id, m.title, m.started_at"
+            " FROM meeting_speaker_embeddings mse"
+            " JOIN meetings m ON m.id = mse.meeting_id"
+            " WHERE mse.speaker = ?"
+            " ORDER BY m.started_at DESC LIMIT ?",
+            (name, limit),
+        ).fetchall()
+    return [dict(r) for r in rows]
+
+
 def get_meeting_embedding(meeting_id: str, speaker: str) -> list[float] | None:
     with cursor() as c:
         r = c.execute("SELECT embedding FROM meeting_speaker_embeddings"

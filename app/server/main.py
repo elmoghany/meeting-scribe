@@ -247,6 +247,12 @@ def list_speakers():
     return [{"name": p["name"], "n_samples": p["n_samples"]} for p in db.list_profiles()]
 
 
+@app.get("/api/speakers/{name}/meetings")
+def speaker_meetings(name: str):
+    """Meetings where this named voice appears."""
+    return db.profile_meetings(name)
+
+
 @app.delete("/api/speakers/{name}")
 def delete_speaker(name: str):
     db.delete_profile(name)
