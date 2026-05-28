@@ -17,6 +17,10 @@ models/
 *.db
 *.sqlite3
 
+# bot build artifacts + the Zoom SDK (do NOT redistribute the SDK)
+bot/build/
+bot/sdk/
+
 # os
 .DS_Store
 Thumbs.db

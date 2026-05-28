@@ -54,9 +54,13 @@ Tracking the autonomous feature-parity work against Otter.ai. Everything stays
 25. ✅ Persistent speaker profiles — name a voice once, auto-recognized across
     meetings (Resemblyzer embeddings on the cluster + cosine match + enroll-on-rename;
     verified: 256-dim embeddings per speaker, matching unit-tested)
+26. ✅ Headless join-bot scaffold (Zoom Meeting SDK, Linux, full production):
+    JWT signing + Python runner + C++ glue (main.cpp) + CMake + Dockerfile +
+    setup README. Build/run once you've downloaded the gated SDK.
 
 ## Next
-26. ⬜ (optional) per-segment confidence display; sentiment; further polish
+27. ⬜ Auto-wire bot into AutoRecorder (opt-in via MEETINGSCRIBE_BOT_ENABLED)
+28. ⬜ Verify a real bot join end-to-end once the SDK is downloaded + built
 14. ⬜ Slide/screenshot capture during screen-share segments
 15. ⬜ Sentiment / topic tags per meeting (lightweight, key-free)
 

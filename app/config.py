@@ -76,6 +76,16 @@ class Settings:
         self.zoom_redirect_uri = os.getenv(
             "ZOOM_REDIRECT_URI", "http://localhost:8765/oauth/zoom/callback")
 
+        # Zoom Meeting SDK (headless join-bot). Separate from the OAuth app.
+        # Create a "General App" in Zoom Marketplace with the Meeting SDK enabled.
+        self.zoom_sdk_key = os.getenv("ZOOM_SDK_KEY") or None
+        self.zoom_sdk_secret = os.getenv("ZOOM_SDK_SECRET") or None
+        self.bot_enabled = _bool("MEETINGSCRIBE_BOT_ENABLED", False)
+        self.bot_binary = os.getenv("MEETINGSCRIBE_BOT_BINARY", "meetingscribe-bot")
+        self.bot_docker_image = os.getenv("MEETINGSCRIBE_BOT_DOCKER_IMAGE") or None
+        self.bot_display_name = os.getenv("MEETINGSCRIBE_BOT_NAME", "MeetingScribe Bot")
+        self.bot_max_meeting_sec = int(os.getenv("MEETINGSCRIBE_BOT_MAX_SEC", "14400"))
+
         # .ics calendar (URL or local path) for key-free auto-record (any calendar)
         self.calendar_ics = os.getenv("CALENDAR_ICS_URL") or os.getenv("CALENDAR_ICS_PATH") or None
 
