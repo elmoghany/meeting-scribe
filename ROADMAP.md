@@ -58,9 +58,15 @@ Tracking the autonomous feature-parity work against Otter.ai. Everything stays
     JWT signing + Python runner + C++ glue (main.cpp) + CMake + Dockerfile +
     setup README. Build/run once you've downloaded the gated SDK.
 
+27. ✅ AutoRecorder bot dispatch (opt-in via MEETINGSCRIBE_BOT_ENABLED)
+28. ✅ OAuth-callback bridge on the github.io landing page (no Zoom-config change needed)
+29. ✅ GitHub Actions CI (pytest on push, py 3.10/3.11/3.12 matrix, badge in README)
+
 ## Next
-27. ⬜ Auto-wire bot into AutoRecorder (opt-in via MEETINGSCRIBE_BOT_ENABLED)
-28. ⬜ Verify a real bot join end-to-end once the SDK is downloaded + built
+30. ⬜ Verify a real bot join end-to-end once the SDK is downloaded + built
+31. ⬜ Per-meeting rule-based sentiment chip
+32. ⬜ Per-segment confidence display (faster-whisper avg_logprob)
+33. ⬜ Cross-meeting "Speakers" view (each named voice + meetings they were in)
 14. ⬜ Slide/screenshot capture during screen-share segments
 15. ⬜ Sentiment / topic tags per meeting (lightweight, key-free)
 

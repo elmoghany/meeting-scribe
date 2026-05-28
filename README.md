@@ -6,6 +6,8 @@
 Live transcription · speaker diarization · AI summaries · action items · "ask your meeting" chat.
 100% local. No API keys. MIT licensed.
 
+[![CI](https://github.com/elmoghany/meeting-scribe/actions/workflows/ci.yml/badge.svg)](https://github.com/elmoghany/meeting-scribe/actions/workflows/ci.yml)
+
 🌐 **Website:** [elmoghany.github.io/meetingnotes](https://elmoghany.github.io/meetingnotes/) · 📖 **[Usage](docs/USAGE.md)** · 🏗 **[Architecture](docs/ARCHITECTURE.md)** · 🤖 **[Headless join-bot](bot/README.md)**
 
 </div>
