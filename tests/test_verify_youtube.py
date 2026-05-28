@@ -10,6 +10,25 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from scripts.verify_youtube import normalize_words, parse_vtt, wer
 
 
+def test_parse_vtt_time_cap_truncates():
+    vtt = """WEBVTT
+
+00:00:00.000 --> 00:00:02.000
+First line
+
+00:00:05.000 --> 00:00:07.000
+Second line
+
+00:01:00.000 --> 00:01:02.000
+Way later line"""
+    capped = parse_vtt(vtt, time_cap_sec=10)
+    assert "First line" in capped and "Second line" in capped
+    assert "Way later line" not in capped
+    # without a cap, all cues included
+    full = parse_vtt(vtt)
+    assert "Way later line" in full
+
+
 def test_parse_vtt_strips_cue_metadata_and_dedupes():
     vtt = """WEBVTT
 Kind: captions

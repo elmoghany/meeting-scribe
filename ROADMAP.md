@@ -75,7 +75,10 @@ Tracking the autonomous feature-parity work against Otter.ai. Everything stays
 36. ✅ Fix audiomix cache invalidation (re-mix when source WAVs are newer)
 37. ✅ CONTRIBUTING.md (dev setup, tests, CI, conventions)
 38. ✅ scripts/verify_youtube.py — real-world test against a YouTube video
-    (yt-dlp + full pipeline + WER vs YouTube auto-captions; Markdown report)
+    (yt-dlp + full pipeline + WER vs YouTube auto-captions; Markdown report).
+    Verified on Steve Jobs's Stanford Commencement (5 min, small.en):
+    **WER = 3.8%** (28 edits / 743 ref words), pipeline runtime 112s,
+    1 speaker correctly detected. Artifact: docs/VERIFICATION.md.
 14. ⬜ Slide/screenshot capture during screen-share segments
 15. ⬜ Sentiment / topic tags per meeting (lightweight, key-free)
 
