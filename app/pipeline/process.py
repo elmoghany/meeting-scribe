@@ -205,6 +205,36 @@ def export_markdown(meeting_id: str) -> Path:
             meta = " · ".join(x for x in [a.owner, a.due] if x)
             lines.append(f"- [ ] {a.text}" + (f"  _({meta})_" if meta else ""))
         lines.append("")
+
+    # Analytics block (topics, sentiment, talk-time) — all pure, computed here
+    # from the same segments so the exported notes match what the dashboard shows.
+    if segments:
+        from . import exporters
+        from .notes import keywords, sentiment
+
+        topics = keywords(segments)
+        if topics:
+            lines += ["## Topics", "", " · ".join(topics), ""]
+
+        sent = sentiment(segments)
+        if sent.get("positive") or sent.get("negative"):
+            emoji = {"positive": "🙂", "negative": "🙁"}.get(sent["label"], "😐")
+            sign = "+" if sent["score"] > 0 else ""
+            lines += ["## Sentiment", "",
+                      f"{emoji} **{sent['label']}** ({sign}{sent['score']}) — "
+                      f"{sent['positive']} positive · {sent['negative']} negative cues",
+                      ""]
+
+        tt = exporters.talk_time(segments)
+        if tt["speakers"]:
+            lines += ["## Talk time", "",
+                      "| Speaker | Time | Share | Words | WPM |",
+                      "|---|--:|--:|--:|--:|"]
+            for sp in tt["speakers"]:
+                lines.append(f"| {sp['speaker']} | {sp['seconds']:.0f}s "
+                             f"| {sp['time_pct']}% | {sp['words']} | {sp['wpm']} |")
+            lines.append("")
+
     lines += ["## Transcript", "", assemble.to_transcript(segments), ""]
 
     out = s.notes_dir / f"{meeting_id}.md"

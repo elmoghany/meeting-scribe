@@ -71,6 +71,7 @@ Tracking the autonomous feature-parity work against Otter.ai. Everything stays
     of meetings they appeared in (jumps straight to the meeting)
 34. ✅ Richer extractive summary — near-duplicate suppression (stemmed-token Jaccard)
     for key_points + decisions so repeated discussion doesn't crowd the summary
+35. ✅ Markdown export now embeds Topics + Sentiment + Talk-time table
 14. ⬜ Slide/screenshot capture during screen-share segments
 15. ⬜ Sentiment / topic tags per meeting (lightweight, key-free)
 
