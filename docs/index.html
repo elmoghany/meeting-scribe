@@ -185,5 +185,24 @@ meetingscribe record -t "Team standup" -p meet</code></pre>
      <a href="https://github.com/elmoghany/meeting-scribe#readme">Docs</a> ·
      <a href="https://github.com/elmoghany/meeting-scribe/blob/main/LICENSE">License</a></p>
 </div></footer>
+<script>
+// OAuth-callback bridge: if an OAuth provider redirected here with ?code=, hand
+// the code off to the local MeetingScribe dashboard (which holds the client
+// secret to do the token exchange). GitHub Pages can't run the backend step
+// itself; this is the smallest possible relay.
+(function () {
+  var q = new URLSearchParams(window.location.search);
+  if (!q.get("code") && !q.get("error")) return;
+  var local = "http://localhost:8765/oauth/zoom/callback?" + q.toString();
+  document.documentElement.innerHTML =
+    "<body style='font:15px -apple-system,Segoe UI,sans-serif;background:#0b0e14;color:#e8ecf4;padding:60px;text-align:center'>" +
+    "<h1 style='margin:0 0 12px'>🔐 Finishing Zoom connection…</h1>" +
+    "<p style='color:#93a0b5'>Handing the authorization code to your local MeetingScribe.</p>" +
+    "<p style='color:#93a0b5;font-size:13px'>If nothing happens, make sure the dashboard is running " +
+    "(<code style='background:#151a24;padding:2px 6px;border-radius:4px'>meetingscribe serve</code>) " +
+    "and <a href='" + local + "' style='color:#6ea8fe'>click to continue to localhost:8765</a>.</p></body>";
+  setTimeout(function () { window.location.replace(local); }, 600);
+})();
+</script>
 </body>
 </html>
