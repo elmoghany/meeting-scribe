@@ -65,7 +65,11 @@ function handleEvent(ev) {
 function segEl(s, withStar) {
   const div = document.createElement("div");
   const hi = highlightedIds.has(s.id) ? " hi" : "";
-  div.className = "seg" + (s.source === "live" ? " live" : "") + hi;
+  const lowc = (typeof s.confidence === "number" && s.confidence < 0.5) ? " low-conf" : "";
+  div.className = "seg" + (s.source === "live" ? " live" : "") + hi + lowc;
+  if (typeof s.confidence === "number") {
+    div.title = "ASR confidence: " + Math.round(s.confidence * 100) + "%";
+  }
   div.dataset.start = s.start;
   div.dataset.end = s.end;
   div.dataset.id = s.id;

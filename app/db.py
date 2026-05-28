@@ -33,7 +33,8 @@ CREATE TABLE IF NOT EXISTS segments (
     end         REAL NOT NULL,
     speaker     TEXT NOT NULL DEFAULT 'Unknown',
     text        TEXT NOT NULL,
-    source      TEXT NOT NULL DEFAULT 'live'
+    source      TEXT NOT NULL DEFAULT 'live',
+    confidence  REAL
 );
 CREATE INDEX IF NOT EXISTS idx_segments_meeting ON segments(meeting_id, start);
 
@@ -125,6 +126,10 @@ def _connect() -> sqlite3.Connection:
         _conn.execute("PRAGMA foreign_keys = ON")
         _conn.execute("PRAGMA journal_mode = WAL")
         _conn.executescript(_SCHEMA)
+        # Idempotent migrations for older DBs (columns we added later).
+        cols = {r[1] for r in _conn.execute("PRAGMA table_info(segments)").fetchall()}
+        if "confidence" not in cols:
+            _conn.execute("ALTER TABLE segments ADD COLUMN confidence REAL")
         _conn.commit()
     return _conn
 
@@ -311,9 +316,10 @@ def _row_to_meeting(r: sqlite3.Row) -> Meeting:
 def add_segment(meeting_id: str, seg: Segment) -> int:
     with cursor() as c:
         cur = c.execute(
-            "INSERT INTO segments(meeting_id,start,end,speaker,text,source)"
-            " VALUES (?,?,?,?,?,?)",
-            (meeting_id, seg.start, seg.end, seg.speaker, seg.text, seg.source),
+            "INSERT INTO segments(meeting_id,start,end,speaker,text,source,confidence)"
+            " VALUES (?,?,?,?,?,?,?)",
+            (meeting_id, seg.start, seg.end, seg.speaker, seg.text, seg.source,
+             seg.confidence),
         )
         return int(cur.lastrowid)
 
@@ -321,9 +327,10 @@ def add_segment(meeting_id: str, seg: Segment) -> int:
 def add_segments(meeting_id: str, segs: list[Segment]) -> None:
     with cursor() as c:
         c.executemany(
-            "INSERT INTO segments(meeting_id,start,end,speaker,text,source)"
-            " VALUES (?,?,?,?,?,?)",
-            [(meeting_id, s.start, s.end, s.speaker, s.text, s.source) for s in segs],
+            "INSERT INTO segments(meeting_id,start,end,speaker,text,source,confidence)"
+            " VALUES (?,?,?,?,?,?,?)",
+            [(meeting_id, s.start, s.end, s.speaker, s.text, s.source, s.confidence)
+             for s in segs],
         )
 
 
@@ -334,9 +341,10 @@ def replace_segments(meeting_id: str, segs: list[Segment], source: str) -> None:
         c.execute("DELETE FROM segments WHERE meeting_id = ? AND source = ?",
                   (meeting_id, source))
         c.executemany(
-            "INSERT INTO segments(meeting_id,start,end,speaker,text,source)"
-            " VALUES (?,?,?,?,?,?)",
-            [(meeting_id, s.start, s.end, s.speaker, s.text, s.source) for s in segs],
+            "INSERT INTO segments(meeting_id,start,end,speaker,text,source,confidence)"
+            " VALUES (?,?,?,?,?,?,?)",
+            [(meeting_id, s.start, s.end, s.speaker, s.text, s.source, s.confidence)
+             for s in segs],
         )
 
 
@@ -351,7 +359,8 @@ def get_segments(meeting_id: str, source: str | None = None) -> list[Segment]:
         rows = c.execute(q, args).fetchall()
     return [
         Segment(id=r["id"], meeting_id=r["meeting_id"], start=r["start"], end=r["end"],
-                speaker=r["speaker"], text=r["text"], source=r["source"])
+                speaker=r["speaker"], text=r["text"], source=r["source"],
+                confidence=(r["confidence"] if "confidence" in r.keys() else None))
         for r in rows
     ]
 

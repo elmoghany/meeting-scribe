@@ -65,7 +65,8 @@ Tracking the autonomous feature-parity work against Otter.ai. Everything stays
 ## Next
 30. ⬜ Verify a real bot join end-to-end once the SDK is downloaded + built
 31. ✅ Per-meeting rule-based sentiment chip (key-free lexicon, negation-aware)
-32. ⬜ Per-segment confidence display (faster-whisper avg_logprob)
+32. ✅ Per-segment confidence display — Segment.confidence from faster-whisper
+    avg_logprob; low-confidence (<50%) lines render dimmed/italic with a tooltip
 33. ⬜ Cross-meeting "Speakers" view (each named voice + meetings they were in)
 14. ⬜ Slide/screenshot capture during screen-share segments
 15. ⬜ Sentiment / topic tags per meeting (lightweight, key-free)

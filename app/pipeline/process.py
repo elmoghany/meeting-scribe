@@ -48,7 +48,8 @@ class PipelineResult:
     @staticmethod
     def from_json(d: dict) -> "PipelineResult":
         segs = [Segment(start=x["start"], end=x["end"], text=x["text"],
-                        speaker=x["speaker"], source="batch") for x in d["segments"]]
+                        speaker=x["speaker"], source="batch",
+                        confidence=x.get("confidence")) for x in d["segments"]]
         summ = Summary(overview=d["summary"]["overview"],
                        key_points=d["summary"]["key_points"],
                        decisions=d["summary"]["decisions"])

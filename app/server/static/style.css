@@ -81,6 +81,7 @@ ul { list-style: none; padding: 0; margin: 0; }
 .seg .who.me { color: var(--ok); }
 .seg .ts { color: var(--muted); font-size: 11px; margin-right: 6px; }
 .seg.live { opacity: .85; }
+.seg.low-conf { opacity: .55; font-style: italic; }
 #player { width: 100%; margin: 8px 0 4px; height: 34px; }
 .seg { position: relative; }
 .seg.hi { background: rgba(251, 191, 36, .10); box-shadow: inset 3px 0 0 var(--warn); }

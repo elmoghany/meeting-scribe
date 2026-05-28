@@ -19,9 +19,10 @@ class Segment:
     source: Source = "live"
     id: int | None = None
     meeting_id: str | None = None
+    confidence: float | None = None  # 0..1, from faster-whisper avg_logprob
 
     def to_dict(self) -> dict:
-        return {
+        d = {
             "id": self.id,
             "start": round(self.start, 2),
             "end": round(self.end, 2),
@@ -29,6 +30,9 @@ class Segment:
             "speaker": self.speaker,
             "source": self.source,
         }
+        if self.confidence is not None:
+            d["confidence"] = round(self.confidence, 3)
+        return d
 
 
 @dataclass

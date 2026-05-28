@@ -13,11 +13,24 @@ from __future__ import annotations
 
 from functools import lru_cache
 
+import math
+
 import numpy as np
 
 from ..config import get_settings
 from ..device import detect
 from ..models import Segment
+
+
+def _confidence(seg) -> float | None:
+    """Convert faster-whisper avg_logprob (a log probability) to 0..1 confidence."""
+    lp = getattr(seg, "avg_logprob", None)
+    if lp is None:
+        return None
+    try:
+        return round(max(0.0, min(1.0, math.exp(float(lp)))), 3)
+    except (ValueError, OverflowError):
+        return None
 
 
 @lru_cache(maxsize=2)
@@ -57,7 +70,8 @@ class Transcriber:
             text = seg.text.strip()
             if text:
                 out.append(Segment(start=t_offset + seg.start, end=t_offset + seg.end,
-                                   text=text, speaker=speaker, source=source))
+                                   text=text, speaker=speaker, source=source,
+                                   confidence=_confidence(seg)))
         return out
 
     def transcribe_file(self, path: str, language: str | None = None,
@@ -72,5 +86,6 @@ class Transcriber:
             text = seg.text.strip()
             if text:
                 out.append(Segment(start=seg.start, end=seg.end, text=text,
-                                   speaker=speaker, source=source))
+                                   speaker=speaker, source=source,
+                                   confidence=_confidence(seg)))
         return out, info.language
