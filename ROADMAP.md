@@ -69,6 +69,8 @@ Tracking the autonomous feature-parity work against Otter.ai. Everything stays
     avg_logprob; low-confidence (<50%) lines render dimmed/italic with a tooltip
 33. ✅ Cross-meeting "Speakers" view — click a voice profile to expand the list
     of meetings they appeared in (jumps straight to the meeting)
+34. ✅ Richer extractive summary — near-duplicate suppression (stemmed-token Jaccard)
+    for key_points + decisions so repeated discussion doesn't crowd the summary
 14. ⬜ Slide/screenshot capture during screen-share segments
 15. ⬜ Sentiment / topic tags per meeting (lightweight, key-free)
 

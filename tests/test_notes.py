@@ -22,6 +22,39 @@ def test_extract_action_items_owner_and_due():
     assert sam_item.due and "friday" in sam_item.due.lower()
 
 
+def test_extractive_summary_dedupes_near_duplicates():
+    # The "ship v2" idea is repeated three times with minor variation.
+    text = (
+        "We will ship v2 next week. "
+        "Ship v2 next week is the plan. "
+        "We are shipping v2 next week. "
+        "Marketing needs the launch assets. "
+        "Engineering owns the auth migration. "
+    )
+    s = notes.extractive_summary(text, max_points=5)
+    # "ship v2 next week" should appear at most once across key_points.
+    ship = [k for k in s.key_points if "ship" in k.lower() and "v2" in k.lower()]
+    assert len(ship) == 1, f"expected 1 ship-v2 line, got {len(ship)}: {ship}"
+    # The other distinct ideas should still surface.
+    joined = " ".join(s.key_points).lower()
+    assert "marketing" in joined and "auth" in joined
+
+
+def test_extractive_decisions_dedupe():
+    text = (
+        "We decided to use OAuth. "
+        "We decided to use OAuth for the integration. "
+        "We agreed to use OAuth. "
+        "We decided to ship on Friday. "
+    )
+    s = notes.extractive_summary(text)
+    # Three near-identical OAuth decisions should collapse to one;
+    # the Friday decision is distinct and should be kept.
+    oauth = [d for d in s.decisions if "oauth" in d.lower()]
+    friday = [d for d in s.decisions if "friday" in d.lower()]
+    assert len(oauth) == 1 and len(friday) == 1
+
+
 def test_sentiment_positive_negative_neutral():
     pos = [_seg("Great work everyone, shipped the release. Excellent and thanks!")]
     neg = [_seg("This is a terrible blocker, we are stuck and frustrated.")]

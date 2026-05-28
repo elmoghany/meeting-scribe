@@ -63,8 +63,29 @@ def _sentences(text: str) -> list[str]:
     return [s.strip() for s in _SENT_SPLIT.split(text) if len(s.strip()) > 3]
 
 
+def _stem(w: str) -> str:
+    """Tiny suffix-stripper so 'ship' and 'shipping' compare equal."""
+    for suf in ("ies", "ied", "ing", "ed", "es", "s"):
+        if w.endswith(suf) and len(w) > len(suf) + 2:
+            return w[: -len(suf)]
+    return w
+
+
+def _too_similar(a: str, b: str, threshold: float = 0.5) -> bool:
+    """Stemmed-token Jaccard above threshold => effectively duplicates."""
+    ta = {_stem(w) for w in _tokenize(a)}
+    tb = {_stem(w) for w in _tokenize(b)}
+    if not ta or not tb:
+        return False
+    inter = len(ta & tb)
+    union = len(ta | tb)
+    return union > 0 and (inter / union) >= threshold
+
+
 def extractive_summary(transcript_text: str, max_points: int = 7) -> Summary:
-    """Frequency-weighted sentence ranking (a lightweight TextRank)."""
+    """Frequency-weighted sentence ranking (a lightweight TextRank) with
+    near-duplicate suppression so repeated discussion doesn't dominate the
+    key points."""
     sents = _sentences(transcript_text)
     if not sents:
         return Summary()
@@ -82,9 +103,30 @@ def extractive_summary(transcript_text: str, max_points: int = 7) -> Summary:
         score = sum(freq[t] for t in toks) / (len(toks) ** 0.6) / top
         scored.append((score, i, s))
     scored.sort(reverse=True)
-    chosen = sorted(scored[: max_points], key=lambda x: x[1])
-    key_points = [_clean(s) for _, _, s in chosen]
-    decisions = [_clean(s) for s in sents if _DECISION_CUES.search(s)][:5]
+
+    # Pick top-scoring sentences, skipping near-duplicates of already-chosen ones.
+    picked: list[tuple[int, str]] = []  # (orig_index, sentence)
+    for _score, idx, s in scored:
+        if any(_too_similar(s, t) for _, t in picked):
+            continue
+        picked.append((idx, s))
+        if len(picked) >= max_points:
+            break
+    picked.sort(key=lambda x: x[0])
+    key_points = [_clean(s) for _, s in picked]
+
+    # Dedupe decisions the same way.
+    decisions: list[str] = []
+    for s in sents:
+        if not _DECISION_CUES.search(s):
+            continue
+        cleaned = _clean(s)
+        if any(_too_similar(cleaned, d) for d in decisions):
+            continue
+        decisions.append(cleaned)
+        if len(decisions) >= 5:
+            break
+
     overview = " ".join(key_points[:2])
     return Summary(overview=overview, key_points=key_points, decisions=decisions)
 
