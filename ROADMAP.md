@@ -74,6 +74,8 @@ Tracking the autonomous feature-parity work against Otter.ai. Everything stays
 35. ✅ Markdown export now embeds Topics + Sentiment + Talk-time table
 36. ✅ Fix audiomix cache invalidation (re-mix when source WAVs are newer)
 37. ✅ CONTRIBUTING.md (dev setup, tests, CI, conventions)
+38. ✅ scripts/verify_youtube.py — real-world test against a YouTube video
+    (yt-dlp + full pipeline + WER vs YouTube auto-captions; Markdown report)
 14. ⬜ Slide/screenshot capture during screen-share segments
 15. ⬜ Sentiment / topic tags per meeting (lightweight, key-free)
 
