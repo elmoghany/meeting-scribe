@@ -260,7 +260,7 @@ def meeting_detail(meeting_id: str):
         raise HTTPException(404, "Meeting not found")
     summary = db.get_summary(meeting_id)
     segs = db.get_segments(meeting_id, source="batch") or db.get_segments(meeting_id)
-    from ..pipeline.notes import keywords
+    from ..pipeline.notes import keywords, sentiment
     return {
         "meeting": m.to_dict(),
         "summary": summary.to_dict() if summary else None,
@@ -268,6 +268,7 @@ def meeting_detail(meeting_id: str):
         "segments": [s.to_dict() for s in segs],
         "tags": db.get_tags(meeting_id),
         "topics": keywords(segs),
+        "sentiment": sentiment(segs),
     }
 
 

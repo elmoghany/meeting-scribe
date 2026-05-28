@@ -22,6 +22,28 @@ def test_extract_action_items_owner_and_due():
     assert sam_item.due and "friday" in sam_item.due.lower()
 
 
+def test_sentiment_positive_negative_neutral():
+    pos = [_seg("Great work everyone, shipped the release. Excellent and thanks!")]
+    neg = [_seg("This is a terrible blocker, we are stuck and frustrated.")]
+    neu = [_seg("We discussed the agenda items and reviewed the document.")]
+    assert notes.sentiment(pos)["label"] == "positive"
+    assert notes.sentiment(pos)["score"] > 0
+    assert notes.sentiment(neg)["label"] == "negative"
+    assert notes.sentiment(neg)["score"] < 0
+    assert notes.sentiment(neu)["label"] == "neutral"
+
+
+def test_sentiment_negation_flips():
+    # "not good" should NOT count as positive
+    s = notes.sentiment([_seg("That is not good and not great.")])
+    assert s["positive"] == 0 and s["negative"] >= 2
+
+
+def test_sentiment_empty():
+    s = notes.sentiment([])
+    assert s == {"score": 0.0, "label": "neutral", "positive": 0, "negative": 0}
+
+
 def test_keywords_topics():
     segs = [
         _seg("The launch plan is critical. We reviewed the launch plan today."),

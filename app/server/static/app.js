@@ -326,8 +326,16 @@ async function openMeeting(id) {
     }
   } else sd.innerHTML = `<p class="muted">No summary yet (still processing?).</p>`;
 
-  // topics (auto keywords)
+  // topics (auto keywords) + sentiment chip
   const tp = $("topics"); tp.innerHTML = "";
+  if (d.sentiment && (d.sentiment.positive || d.sentiment.negative)) {
+    const s = d.sentiment;
+    const emoji = s.label === "positive" ? "🙂" : s.label === "negative" ? "🙁" : "😐";
+    const c = chip(`${emoji} ${s.label} (${s.score > 0 ? "+" : ""}${s.score})`, false);
+    c.classList.add("sentiment-" + s.label);
+    c.title = `${s.positive} positive · ${s.negative} negative cue words`;
+    tp.appendChild(c);
+  }
   (d.topics || []).forEach((t) => { const c = chip(t, false); c.classList.add("topic"); tp.appendChild(c); });
 
   // speakers (rename inline — reuses /rename-speakers)

@@ -89,6 +89,58 @@ def extractive_summary(transcript_text: str, max_points: int = 7) -> Summary:
     return Summary(overview=overview, key_points=key_points, decisions=decisions)
 
 
+_POS_WORDS = frozenset((
+    "good great excellent agree agreed love happy success won win winning "
+    "perfect awesome fantastic thanks thank helpful productive ship shipped "
+    "shipping launch launched ready done complete completed approved yes "
+    "solved solving fixed fix nice clear clearly clean smooth smoothly "
+    "appreciate appreciated appreciation effective efficient on-track unblocked"
+).split())
+_NEG_WORDS = frozenset((
+    "bad terrible awful problem problems issue issues blocker blocked blocker's "
+    "delayed delay fail failed failure broken broke break concerned concern "
+    "worry worried sorry wrong error errors missed missing stuck frustrating "
+    "frustrated confusing confused unclear difficult hard struggle struggling "
+    "regret regression bug bugs slip slipped slipping off-track unhappy disappointed"
+).split())
+_NEG_GATES = frozenset({"not", "no", "never", "without", "cannot", "cant",
+                        "couldnt", "wont", "didnt", "doesnt", "dont"})
+
+
+def sentiment(segments: list[Segment]) -> dict:
+    """Lightweight rule-based meeting sentiment (key-free, deterministic).
+
+    Score is in [-1, 1]. Label is positive/neutral/negative based on a small
+    deadzone around zero. Looks one token back for negation (so "not good"
+    doesn't count as positive). Honest about precision — this is a vibes
+    indicator, not a calibrated classifier.
+    """
+    text = " ".join(s.text for s in segments).lower()
+    toks = re.findall(r"[a-z']+", text)
+    pos = neg = 0
+    for i, w in enumerate(toks):
+        flip = i > 0 and toks[i - 1].replace("'", "") in _NEG_GATES
+        if w in _POS_WORDS:
+            if flip:
+                neg += 1
+            else:
+                pos += 1
+        elif w in _NEG_WORDS:
+            if flip:
+                pos += 1
+            else:
+                neg += 1
+    total = pos + neg
+    score = 0.0 if total == 0 else round((pos - neg) / total, 3)
+    if score > 0.15:
+        label = "positive"
+    elif score < -0.15:
+        label = "negative"
+    else:
+        label = "neutral"
+    return {"score": score, "label": label, "positive": pos, "negative": neg}
+
+
 def keywords(segments: list[Segment], top_n: int = 8) -> list[str]:
     """Extract salient topic phrases (key-free): frequent bigrams (weighted) +
     top remaining unigrams, minus stopwords. Otter-style 'topics'."""

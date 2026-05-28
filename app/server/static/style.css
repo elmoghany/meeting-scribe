@@ -100,6 +100,9 @@ ul { list-style: none; padding: 0; margin: 0; }
 .chip.removable { cursor: default; color: var(--fg); }
 .chip.topic { cursor: default; color: var(--accent2); border-color: var(--accent2); background: transparent; }
 .chip.topic:hover { border-color: var(--accent2); }
+.chip.sentiment-positive { color: var(--ok); border-color: var(--ok); cursor: default; }
+.chip.sentiment-negative { color: var(--danger); border-color: var(--danger); cursor: default; }
+.chip.sentiment-neutral  { color: var(--muted); cursor: default; }
 .chip-x { margin-left: 6px; cursor: pointer; color: var(--muted); }
 .chip-x:hover { color: var(--danger); }
 .tag-add { width: 70px; padding: 3px 8px; font-size: 12px; margin: 0; border-radius: 999px; }
