@@ -48,6 +48,18 @@ Open a meeting from the list to:
   (Google/Outlook/Apple all provide one — no OAuth). MeetingScribe starts
   capture when a meeting begins and stops after its window.
 
+## Check transcription quality on a known video
+Measure the pipeline's accuracy against a YouTube video's own captions
+(Word Error Rate):
+```bash
+meetingscribe verify-youtube "https://www.youtube.com/watch?v=..." \
+    --seconds 300 --model small.en
+```
+It downloads the audio + captions (needs `yt-dlp` + `ffmpeg`), runs the full
+pipeline, and writes a Markdown report with WER, detected speakers, and a
+sample transcript. See [VERIFICATION.md](VERIFICATION.md) for measured results
+(WER 3.8%/8.4%/11.5% on 1/2/3-speaker real audio).
+
 ## Keyboard shortcuts
 | Key | Action |
 |---|---|
