@@ -142,15 +142,17 @@ A `large-v3` confirmation run submitted to the **`taylor` A40** node failed its
 torch GPU ops: *"NVIDIA driver too old (found version 12080)"*. Root cause —
 the `mscribe` env has **torch 2.12.0+cu130** (CUDA 13.0) but that node's driver
 only supports **CUDA 12.0**. pyannote and resemblyzer both fell back to
-"Others", and the resulting WER (15.9%) is confounded — *not* a valid
-large-v3 vs `small.en` comparison.
+"Others". (Transcription was unaffected — faster-whisper/CTranslate2 ships its
+own CUDA-12 runtime, so only torch-based diarization broke.)
 
 Why earlier pyannote runs worked: they ran on the **login-node CPU** (torch CPU
 needs no driver). This was the first time torch touched that GPU.
 
-**Mitigation shipped:** `diarize_pyannote` now **retries on CPU** when a CUDA
-op raises (instead of collapsing the whole chain to "Others"). So on a
-driver-mismatched node, pyannote still runs — just on CPU (slower, correct).
+**Mitigation shipped + VALIDATED on the A40:** `diarize_pyannote` now **retries
+on CPU** when a CUDA op raises. Re-running the large-v3 job on `taylor` after the
+fix, the log shows `pyannote on CUDA failed (RuntimeError); retrying on CPU` and
+diarization produced **`['Speaker 1', 'Speaker 2']`** — real speakers, where the
+pre-fix run gave `['Others']`. Correctness restored on the mismatched node.
 
 **Still worth doing (for GPU speed):**
 - install a **cu12** torch in the `mscribe` env to match the node driver, OR
@@ -158,11 +160,19 @@ driver-mismatched node, pyannote still runs — just on CPU (slower, correct).
 With the CPU retry in place this is now a performance concern, not a
 correctness one — diarization no longer silently degrades on `taylor`.
 
+## large-v3 surprise: under-transcription (2026-05-29)
+On the Karpathy clip, `large-v3` gave **WER 15.9%** (146/919) vs `small.en`'s
+8.4% — and notably **hyp=820 < ref=919**, i.e. large-v3 produced ~100 *fewer*
+words: it's under-transcribing, not mis-spelling. Two caveats: (1) WER here is
+agreement with YouTube's *own auto-captions* (themselves ASR, not ground truth),
+so "higher WER" ≠ "worse"; (2) but a 100-word shortfall is a real content gap.
+Leading hypothesis: `transcribe_file` uses `vad_filter=True`, which can over-trim
+with large-v3. **Investigating** with a `vad_filter=False` comparison run.
+
 ## Open improvements (prioritized)
-1. **Proper-noun errors** ("Andrej"→"Andre", "Fridman"→"Friedman"). Inherent to
-   `small.en`; `large-v3` should help — but the confirmation run is **blocked**
-   on the torch/driver mismatch above. Re-run once the env has a cu12 torch or
-   a driver-matched node.
+1. **Proper-noun errors** ("Andrej"→"Andre", "Fridman"→"Friedman"). `small.en`
+   misses them; checking whether large-v3 fixes them is folded into the
+   under-transcription investigation above.
 2. **Overview quality** — *fixed.* The overview used the first two key points
    in document order, which for a meeting is usually the intro/greeting
    ("thanks for joining") rather than the substance. Now it leads with the
