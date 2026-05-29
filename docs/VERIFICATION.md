@@ -136,6 +136,10 @@ with honest priorities. Updated as runs accumulate.
   Jobs speech, `tiny.en`, no torch installed) gave **WER 4.0%** (7/174) and
   cleanly degraded diarization to "Others" — confirming the pipeline is
   portable and that even the smallest model transcribes accurately.
+- **Non-English (Spanish), language auto-detect**: a Spanish TEDx talk
+  (5-min, `large-v3`, GPU) — language auto-detected as **`es` (p=0.99)** and
+  **WER 3.7%** (31/844), hyp≈ref (full transcript). Confirms the multi-language
+  support is real end-to-end, not just a UI dropdown.
 
 ## Infra finding (2026-05-29): torch/driver mismatch on the `taylor` A40
 A `large-v3` confirmation run submitted to the **`taylor` A40** node failed its
