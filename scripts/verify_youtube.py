@@ -107,6 +107,29 @@ def _have(cmd: str) -> bool:
     return shutil.which(cmd) is not None
 
 
+def _ytdlp_cmd() -> list[str]:
+    """Resolve yt-dlp deterministically: prefer `python -m yt_dlp` (same
+    interpreter => same venv, no PATH ambiguity between a stale global yt-dlp
+    and the one we installed), falling back to a `yt-dlp` binary on PATH."""
+    try:
+        import yt_dlp  # noqa: F401
+        return [sys.executable, "-m", "yt_dlp"]
+    except Exception:
+        if _have("yt-dlp"):
+            return ["yt-dlp"]
+        raise SystemExit("yt-dlp is not installed. `pip install yt-dlp`")
+
+
+def _run_ytdlp(args: list[str], *, required: bool) -> subprocess.CompletedProcess:
+    """Run yt-dlp, surfacing its stderr on failure instead of an opaque
+    CalledProcessError traceback. If ``required`` and it fails, exit cleanly."""
+    proc = subprocess.run([*_ytdlp_cmd(), *args], capture_output=True, text=True)
+    if proc.returncode != 0 and required:
+        tail = "\n".join((proc.stderr or proc.stdout or "").splitlines()[-8:])
+        raise SystemExit(f"yt-dlp failed (exit {proc.returncode}):\n{tail}")
+    return proc
+
+
 _AUDIO_EXTS = {".wav", ".m4a", ".webm", ".opus", ".mp3"}
 
 
@@ -127,8 +150,7 @@ def _find_captions(out_dir: Path) -> Path | None:
 def yt_dlp_download(url: str, out_dir: Path, seconds: int) -> tuple[Path, Path | None]:
     """Download audio + English captions (user-uploaded preferred, auto as
     fallback). Idempotent — skips downloads when files already exist."""
-    if not _have("yt-dlp"):
-        raise SystemExit("yt-dlp is not installed. `pip install yt-dlp`")
+    _ytdlp_cmd()  # fail fast with a clear message if yt-dlp is unavailable
     out_dir.mkdir(parents=True, exist_ok=True)
     audio_tmpl = str(out_dir / "system.%(ext)s")
     caps_tmpl = str(out_dir / "captions.%(ext)s")
@@ -138,14 +160,14 @@ def yt_dlp_download(url: str, out_dir: Path, seconds: int) -> tuple[Path, Path |
     if audio_path:
         print(f"[verify] audio already present: {audio_path.name}", flush=True)
     else:
-        audio_args = ["yt-dlp", "-f", "bestaudio", "-o", audio_tmpl, "--no-playlist",
+        audio_args = ["-f", "bestaudio", "-o", audio_tmpl, "--no-playlist",
                       "--quiet", "--no-warnings", url]
         if section:
             audio_args[-1:-1] = ["--download-sections", section]
         if _have("ffmpeg"):
             audio_args[-1:-1] = ["-x", "--audio-format", "wav", "--audio-quality", "0"]
         print(f"[verify] downloading audio ({seconds or 'full'}s) ...", flush=True)
-        subprocess.run(audio_args, check=True)
+        _run_ytdlp(audio_args, required=True)
         audio_path = _find_audio(out_dir)
         if not audio_path:
             raise SystemExit(f"yt-dlp did not produce an audio file in {out_dir}")
@@ -156,17 +178,13 @@ def yt_dlp_download(url: str, out_dir: Path, seconds: int) -> tuple[Path, Path |
     else:
         # Pull user-uploaded subs first (better quality, less rate-limited),
         # then auto-subs as a fallback. Either one yields captions*.vtt.
-        for args in (
-            ["yt-dlp", "--write-subs", "--skip-download",
-             "--sub-langs", "en", "--sub-format", "vtt",
-             "-o", caps_tmpl, "--no-playlist", "--quiet", "--no-warnings", url],
-            ["yt-dlp", "--write-auto-subs", "--skip-download",
-             "--sub-langs", "en", "--sub-format", "vtt",
-             "-o", caps_tmpl, "--no-playlist", "--quiet", "--no-warnings", url],
-        ):
-            print(f"[verify] fetching captions: {args[1]} ...", flush=True)
-            r = subprocess.run(args, capture_output=True, text=True)
-            if r.returncode == 0 and _find_captions(out_dir):
+        for mode in ("--write-subs", "--write-auto-subs"):
+            print(f"[verify] fetching captions: {mode} ...", flush=True)
+            # Captions are optional — never fatal (we just skip WER).
+            _run_ytdlp([mode, "--skip-download", "--sub-langs", "en",
+                        "--sub-format", "vtt", "-o", caps_tmpl, "--no-playlist",
+                        "--quiet", "--no-warnings", url], required=False)
+            if _find_captions(out_dir):
                 break
         caps_path = _find_captions(out_dir)
     return audio_path, caps_path

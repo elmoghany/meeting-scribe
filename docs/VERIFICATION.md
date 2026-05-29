@@ -124,6 +124,10 @@ with honest priorities. Updated as runs accumulate.
   8.4% (2-speaker technical interview) — both well under the 20% "good" bar.
 - **Diarization separates real conversation**: 2 speakers correctly detected and
   assigned on Karpathy (Lex intro → one label, Karpathy answers → the other).
+- **Runs on a plain laptop, no GPU/cluster**: a local Windows run (90s of the
+  Jobs speech, `tiny.en`, no torch installed) gave **WER 4.0%** (7/174) and
+  cleanly degraded diarization to "Others" — confirming the pipeline is
+  portable and that even the smallest model transcribes accurately.
 
 ## Open improvements (prioritized)
 1. **Proper-noun errors** ("Andrej"→"Andre", "Fridman"→"Friedman"). Inherent to
