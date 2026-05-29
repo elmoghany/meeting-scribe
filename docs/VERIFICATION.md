@@ -148,12 +148,15 @@ large-v3 vs `small.en` comparison.
 Why earlier pyannote runs worked: they ran on the **login-node CPU** (torch CPU
 needs no driver). This was the first time torch touched that GPU.
 
-**Actionable (affects the app's default remote config — `.env` targets
-`CORNELL_PARTITION=taylor` + `nvidia_a40` + `MEETINGSCRIBE_DIARIZER=pyannote`):**
+**Mitigation shipped:** `diarize_pyannote` now **retries on CPU** when a CUDA
+op raises (instead of collapsing the whole chain to "Others"). So on a
+driver-mismatched node, pyannote still runs — just on CPU (slower, correct).
+
+**Still worth doing (for GPU speed):**
 - install a **cu12** torch in the `mscribe` env to match the node driver, OR
-- run diarization on CPU on the remote, OR
 - target a GPU partition whose driver matches cu130.
-Until then the remote GPU diarization silently degrades to "Others" on `taylor`.
+With the CPU retry in place this is now a performance concern, not a
+correctness one — diarization no longer silently degrades on `taylor`.
 
 ## Open improvements (prioritized)
 1. **Proper-noun errors** ("Andrej"→"Andre", "Fridman"→"Friedman"). Inherent to

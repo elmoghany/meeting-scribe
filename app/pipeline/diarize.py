@@ -184,10 +184,26 @@ def diarize_pyannote(wav_path: str, num_speakers: int | None = None,
         pipeline = Pipeline.from_pretrained(model, token=token)
     except TypeError:
         pipeline = Pipeline.from_pretrained(model, use_auth_token=token)
-    if torch.cuda.is_available():
-        pipeline.to(torch.device("cuda"))
     kwargs = {"num_speakers": num_speakers} if num_speakers else {}
-    result = pipeline(wav_path, **kwargs)
+
+    def _run(device: str):
+        pipeline.to(torch.device(device))
+        return pipeline(wav_path, **kwargs)
+
+    # Prefer GPU, but a too-old/mismatched CUDA driver makes torch ops raise at
+    # call time (not at is_available()). Retry on CPU rather than letting the
+    # whole diarizer collapse to "Others" — CPU pyannote is slower but correct.
+    if torch.cuda.is_available():
+        try:
+            result = _run("cuda")
+        except Exception as e:
+            import sys
+            print(f"[diarize] pyannote on CUDA failed ({type(e).__name__}); "
+                  f"retrying on CPU.", file=sys.stderr)
+            result = _run("cpu")
+    else:
+        result = _run("cpu")
+
     # pyannote 3.x returns an Annotation; 4.x returns a DiarizeOutput wrapper whose
     # Annotation is at .speaker_diarization.
     annotation = getattr(result, "speaker_diarization", result)
