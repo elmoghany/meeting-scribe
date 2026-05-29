@@ -38,10 +38,20 @@ def _load(model_name: str, device: str, compute_type: str):
     from faster_whisper import WhisperModel  # noqa: PLC0415
 
     s = get_settings()
-    return WhisperModel(
-        model_name, device=device, compute_type=compute_type,
-        download_root=str(s.models_dir / "whisper"),
-    )
+    root = str(s.models_dir / "whisper")
+    try:
+        return WhisperModel(model_name, device=device, compute_type=compute_type,
+                            download_root=root)
+    except Exception as e:
+        # GPU init can fail on a too-old card even when CTranslate2 counts it
+        # (e.g. a local GT 710). Fall back to CPU rather than crash.
+        if device != "cpu":
+            import sys
+            print(f"[asr] {device}/{compute_type} load failed ({type(e).__name__}); "
+                  f"falling back to CPU int8.", file=sys.stderr)
+            return WhisperModel(model_name, device="cpu", compute_type="int8",
+                                download_root=root)
+        raise
 
 
 class Transcriber:
