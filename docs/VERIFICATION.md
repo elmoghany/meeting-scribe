@@ -137,10 +137,29 @@ with honest priorities. Updated as runs accumulate.
   cleanly degraded diarization to "Others" — confirming the pipeline is
   portable and that even the smallest model transcribes accurately.
 
+## Infra finding (2026-05-29): torch/driver mismatch on the `taylor` A40
+A `large-v3` confirmation run submitted to the **`taylor` A40** node failed its
+torch GPU ops: *"NVIDIA driver too old (found version 12080)"*. Root cause —
+the `mscribe` env has **torch 2.12.0+cu130** (CUDA 13.0) but that node's driver
+only supports **CUDA 12.0**. pyannote and resemblyzer both fell back to
+"Others", and the resulting WER (15.9%) is confounded — *not* a valid
+large-v3 vs `small.en` comparison.
+
+Why earlier pyannote runs worked: they ran on the **login-node CPU** (torch CPU
+needs no driver). This was the first time torch touched that GPU.
+
+**Actionable (affects the app's default remote config — `.env` targets
+`CORNELL_PARTITION=taylor` + `nvidia_a40` + `MEETINGSCRIBE_DIARIZER=pyannote`):**
+- install a **cu12** torch in the `mscribe` env to match the node driver, OR
+- run diarization on CPU on the remote, OR
+- target a GPU partition whose driver matches cu130.
+Until then the remote GPU diarization silently degrades to "Others" on `taylor`.
+
 ## Open improvements (prioritized)
 1. **Proper-noun errors** ("Andrej"→"Andre", "Fridman"→"Friedman"). Inherent to
-   `small.en`; `large-v3` (the production batch model) should do better. Worth
-   a confirming run with `--model large-v3`.
+   `small.en`; `large-v3` should help — but the confirmation run is **blocked**
+   on the torch/driver mismatch above. Re-run once the env has a cu12 torch or
+   a driver-matched node.
 2. **Overview quality** — *fixed.* The overview used the first two key points
    in document order, which for a meeting is usually the intro/greeting
    ("thanks for joining") rather than the substance. Now it leads with the
