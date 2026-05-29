@@ -78,6 +78,15 @@ def _cmd_fetch_model(args):
     download(whisper=args.whisper, gguf_repo=args.llm)
 
 
+def _cmd_verify_youtube(args):
+    """Verify the pipeline on a real YouTube video (WER vs its captions)."""
+    from scripts.verify_youtube import main as verify_main
+    argv = [args.url, "--seconds", str(args.seconds), "--model", args.model]
+    if args.out:
+        argv += ["--out", args.out]
+    return verify_main(argv)
+
+
 def _cmd_doctor(_args):
     s = get_settings()
     print(f"data_dir        : {s.data_dir}  (exists={s.data_dir.exists()})")
@@ -141,6 +150,14 @@ def main(argv: list[str] | None = None) -> int:
     sp.add_argument("--llm", default="Qwen/Qwen2.5-3B-Instruct-GGUF",
                     help="HF repo with a GGUF file")
     sp.set_defaults(func=_cmd_fetch_model)
+
+    sp = sub.add_parser("verify-youtube",
+                        help="run the pipeline on a YouTube URL + measure WER")
+    sp.add_argument("url")
+    sp.add_argument("--seconds", type=int, default=300)
+    sp.add_argument("--model", default="small.en")
+    sp.add_argument("--out", default=None)
+    sp.set_defaults(func=_cmd_verify_youtube)
 
     sub.add_parser("doctor", help="check environment").set_defaults(func=_cmd_doctor)
 
