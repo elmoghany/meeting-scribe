@@ -579,7 +579,24 @@ document.addEventListener("keydown", (e) => {
   }
 });
 
+// ---------- custom vocabulary ----------
+async function loadVocab() {
+  const v = await api("/api/vocab").catch(() => ({ terms: [] }));
+  $("vocab").value = (v.terms || []).join("\n");
+}
+$("vocab-save").onclick = async () => {
+  const el = $("vocab-save"); el.textContent = "· saving…";
+  try {
+    await api("/api/vocab", { method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title: $("vocab").value }) });
+    el.textContent = "· saved";
+  } catch { el.textContent = "· error"; }
+  setTimeout(() => { el.textContent = "· save"; }, 1200);
+};
+
 $("player").addEventListener("timeupdate", highlightPlaying);
+loadVocab();
 connectWS();
 refreshMeetings();
 renderAllActions();

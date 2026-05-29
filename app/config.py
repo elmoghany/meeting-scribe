@@ -46,6 +46,11 @@ class Settings:
         self.live_compute = os.getenv("MEETINGSCRIBE_LIVE_COMPUTE", "int8")
         self.batch_model = os.getenv("MEETINGSCRIBE_BATCH_MODEL", "large-v3")
 
+        # custom vocabulary — names/jargon to bias transcription (Whisper
+        # initial_prompt). From MEETINGSCRIBE_VOCAB (comma/newline list) plus an
+        # optional data_dir/vocabulary.txt. Improves proper-noun accuracy.
+        self.vocab_env = os.getenv("MEETINGSCRIBE_VOCAB", "")
+
         # diarization backend: resemblyzer (key-free, default) | pyannote (gated)
         self.diarizer = os.getenv("MEETINGSCRIBE_DIARIZER", "resemblyzer")
         # persistent speaker profiles (voice-match across meetings); needs resemblyzer
@@ -94,6 +99,24 @@ class Settings:
         self.autostart_lead_sec = int(os.getenv("MEETINGSCRIBE_AUTOSTART_LEAD_SEC", "120"))
         self.autostart_buffer_sec = int(os.getenv("MEETINGSCRIBE_AUTOSTART_BUFFER_SEC", "600"))
         self.autostart_poll_sec = int(os.getenv("MEETINGSCRIBE_AUTOSTART_POLL_SEC", "60"))
+
+    @property
+    def vocab_path(self) -> Path:
+        return self.data_dir / "vocabulary.txt"
+
+    def vocab_terms(self) -> list[str]:
+        """Custom vocabulary terms from the env var + the data-dir file, deduped
+        (order preserved)."""
+        raw = list(self.vocab_env.replace("\n", ",").split(","))
+        if self.vocab_path.exists():
+            raw += self.vocab_path.read_text(encoding="utf-8").replace(
+                "\n", ",").split(",")
+        out, seen = [], set()
+        for t in (x.strip() for x in raw):
+            if t and t.lower() not in seen:
+                seen.add(t.lower())
+                out.append(t)
+        return out
 
     @property
     def db_path(self) -> Path:

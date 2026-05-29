@@ -96,5 +96,7 @@ highlights, export, auto-record. Shipped this round:
 39. ✅ Cross-meeting AI Q&A ("ask all meetings") with citations — the headline
     differentiator (Fireflies AskFred / Fathom Perfect Recall), done locally via
     FTS retrieval + the notes chat backend. Expanded stopwords (interrogatives).
-Next candidates: custom vocabulary (Whisper initial_prompt — also fixes
+40. ✅ Custom vocabulary (Whisper initial_prompt; dashboard + .env + vocabulary.txt)
+    — Otter-parity; also targets the proper-noun errors found in verification.
+Next candidates: timestamped highlight clips; per-meeting-type summary templates.
 proper-noun errors); timestamped highlight clips; per-meeting-type templates.

@@ -241,6 +241,22 @@ def tags():
     return db.all_tags()
 
 
+@app.get("/api/vocab")
+def get_vocab():
+    """Custom-vocabulary terms (names/jargon) used to bias transcription."""
+    return {"terms": get_settings().vocab_terms()}
+
+
+@app.put("/api/vocab")
+def set_vocab(req: TitleReq):
+    """Replace the data-dir vocabulary file (comma/newline-separated terms).
+    New transcriptions pick it up (the prompt is read per-Transcriber)."""
+    s = get_settings()
+    terms = [t.strip() for t in req.title.replace(",", "\n").splitlines() if t.strip()]
+    s.vocab_path.write_text("\n".join(terms), encoding="utf-8")
+    return {"terms": s.vocab_terms()}
+
+
 @app.get("/api/speakers")
 def list_speakers():
     """Known voice profiles (names only; embeddings stay server-side)."""

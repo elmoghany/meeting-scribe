@@ -54,6 +54,16 @@ def _load(model_name: str, device: str, compute_type: str):
         raise
 
 
+def vocab_prompt(terms: list[str], limit: int = 60) -> str | None:
+    """Build a Whisper ``initial_prompt`` from custom vocabulary so the model
+    biases toward these names/jargon spellings. None if no terms. Capped so the
+    prompt never crowds out the model's context window."""
+    terms = [t.strip() for t in terms if t and t.strip()][:limit]
+    if not terms:
+        return None
+    return "Glossary of names and terms: " + ", ".join(terms) + "."
+
+
 class Transcriber:
     def __init__(self, model_name: str | None = None, device: str | None = None,
                  compute_type: str | None = None):
@@ -62,6 +72,7 @@ class Transcriber:
         self.model_name = model_name or s.live_model
         self.device = device or auto_dev
         self.compute_type = compute_type or auto_compute
+        self._initial_prompt = vocab_prompt(s.vocab_terms())
 
     @property
     def model(self):
@@ -73,7 +84,7 @@ class Transcriber:
         audio = np.ascontiguousarray(samples, dtype=np.float32)
         segments, _info = self.model.transcribe(
             audio, language=language, beam_size=1, vad_filter=True,
-            condition_on_previous_text=False,
+            condition_on_previous_text=False, initial_prompt=self._initial_prompt,
         )
         out: list[Segment] = []
         for seg in segments:
@@ -89,7 +100,7 @@ class Transcriber:
                         ) -> tuple[list[Segment], str]:
         segments, info = self.model.transcribe(
             path, language=language, beam_size=5, vad_filter=True,
-            word_timestamps=False,
+            word_timestamps=False, initial_prompt=self._initial_prompt,
         )
         out: list[Segment] = []
         for seg in segments:

@@ -63,6 +63,7 @@ token to download the gated pyannote diarization weights once.
 | ✨ **Highlights & comments** | Star key lines, add notes — collaboration without the cloud. |
 | 📊 **Talk-time analytics** | Per-speaker share, word counts, words-per-minute. |
 | ✏️ **Rename speakers** | Turn "Speaker 1" into real names in one click; flows to transcript, exports, analytics. |
+| 🔤 **Custom vocabulary** | Teach it names/jargon (dashboard or `.env`) to bias transcription — better proper nouns. |
 | 🔎 **Search everything** | SQLite FTS5 full-text search across every past meeting. |
 | 📝 **Export anywhere** | Markdown, plain text, **SRT/VTT subtitles**, and JSON. |
 | 🖥️ **Local web dashboard** | Start/stop, live transcript, browse, rename speakers, chat. |

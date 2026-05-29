@@ -35,10 +35,11 @@ main { display: grid; grid-template-columns: 360px 1fr; gap: 16px; padding: 16px
 }
 .card h2 { font-size: 14px; margin: 0 0 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
 h3 { font-size: 13px; color: var(--muted); margin: 18px 0 8px; }
-input, select {
+input, select, textarea {
   width: 100%; background: #0f1218; color: var(--fg);
   border: 1px solid var(--line); border-radius: 8px; padding: 9px 10px; margin-bottom: 10px;
 }
+textarea { resize: vertical; font: inherit; }
 .row { display: flex; gap: 8px; align-items: center; }
 .row.between { justify-content: space-between; }
 .row label { font-size: 13px; color: var(--muted); white-space: nowrap; }
