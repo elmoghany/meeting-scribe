@@ -111,19 +111,27 @@ with honest priorities. Updated as runs accumulate.
   overview was `"…with knobs. Speaker 1: Yeah."` — `ExtractiveNotes.summarize`
   was scoring the labeled form `"Speaker 1: Yeah."` as a candidate sentence.
   Fixed: summarize plain transcript text (commit a02f2d3, test added).
-- **Action-item false positives on conversational audio** (the 6 bogus items
-  on Karpathy). Added an `_is_actionable()` precision filter run after a cue
-  matches — rejects questions, <4-word fragments, and hedged musings ("maybe
-  we should look into it someday") that lack a real commitment. Guarded by a
-  precision+recall corpus test so genuine items survive. Purely explanatory
-  imperatives ("we need to find the setting of the knobs") still pass the
-  regex heuristic by design — the LLM backend is what disambiguates those.
+- **Action-item false positives on conversational audio.** Two rounds:
+  1. `_is_actionable()` filter — rejects questions, <4-word fragments, and
+     hedged musings ("maybe we should look into it someday") without a
+     commitment.
+  2. **Regex bugs found on real All-In data**: `we'?ll` (optional apostrophe)
+     also matched **"well"** ("as well", "well-respected") and `i'?ll` matched
+     **"ill"**; "you can" was a permissive non-assignment cue. Fixed:
+     contractions now require the apostrophe (`['’]`), "you can" dropped.
+  Net effect on the real All-In intro: **5 bogus items → 1**, with genuine
+  action-item recall preserved (precision+recall corpus test). The survivor
+  ("we'll start with X joining…") is real-`we'll` narration — only the LLM
+  backend can tell it from a real "we'll ship the migration" task.
 
 ## Confirmed working
 - **Transcription accuracy is strong**: WER 3.8% (clean single speaker) and
   8.4% (2-speaker technical interview) — both well under the 20% "good" bar.
 - **Diarization separates real conversation**: 2 speakers correctly detected and
   assigned on Karpathy (Lex intro → one label, Karpathy answers → the other).
+- **Three-/four-speaker panel** (All-In Podcast, 5-min intro, pyannote):
+  **WER 11.5%** (105/915) — higher than the cleaner clips, as expected with
+  crosstalk + finance/AI jargon, still under 20%. 3 distinct speakers detected.
 - **Runs on a plain laptop, no GPU/cluster**: a local Windows run (90s of the
   Jobs speech, `tiny.en`, no torch installed) gave **WER 4.0%** (7/174) and
   cleanly degraded diarization to "Others" — confirming the pipeline is

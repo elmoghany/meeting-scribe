@@ -31,11 +31,19 @@ _STOP = set(
 )
 _SENT_SPLIT = re.compile(r"(?<=[.!?])\s+")
 
+# Apostrophe class: straight ' and curly ' (ASR/captions emit either).
+_AP = r"['’]"
 # Cues that a sentence states a task / commitment.
+# NOTE: contractions REQUIRE the apostrophe — `i'?ll` (optional) wrongly matched
+# "ill" and `we'?ll` matched "well" (real false positives found on the All-In
+# podcast: "as well", "well-respected"). "you can" was dropped — it's permissive
+# ("you can potentially…"), not an assignment; real assignments use
+# should/need to/have to/must.
 _ACTION_CUES = re.compile(
-    r"\b(action item|to-?do|follow[- ]?up|i'?ll|i will|we'?ll|we will|let'?s|let us|"
-    r"you (should|need to|have to|must|can)|we (should|need to|have to|must)|"
-    r"i (need to|have to|should|must)|please|make sure|don'?t forget|assign|"
+    rf"\b(action item|to-?do|follow[- ]?up|i{_AP}ll|i will|we{_AP}ll|we will|"
+    rf"let{_AP}s|let us|"
+    r"you (should|need to|have to|must)|we (should|need to|have to|must)|"
+    rf"i (need to|have to|should|must)|please|make sure|don{_AP}t forget|assign|"
     r"will (send|share|email|prepare|review|update|create|set up|schedule|draft|"
     r"check|fix|look into|circle back))\b",
     re.IGNORECASE,
@@ -52,7 +60,7 @@ _HEDGE = re.compile(
     re.IGNORECASE,
 )
 # Strong first-person/again commitment — overrides a hedge.
-_STRONG_COMMIT = re.compile(r"\b(i'?ll|i will|we'?ll|we will)\b", re.IGNORECASE)
+_STRONG_COMMIT = re.compile(rf"\b(i{_AP}ll|i will|we{_AP}ll|we will)\b", re.IGNORECASE)
 _DUE = re.compile(
     r"\b(by|before|on|due)\s+"
     r"(today|tomorrow|tonight|monday|tuesday|wednesday|thursday|friday|saturday|sunday|"
@@ -249,9 +257,9 @@ def _is_actionable(sent: str) -> bool:
 
 def _infer_owner(sentence: str, speaker: str) -> str | None:
     low = sentence.lower()
-    if re.search(r"\bi'?ll\b|\bi will\b|\bi (need|have) to\b", low):
+    if re.search(rf"\bi{_AP}ll\b|\bi will\b|\bi (need|have) to\b", low):
         return speaker if speaker not in ("Unknown",) else "Me"
-    if re.search(r"\byou (should|need to|have to|must|can|will)\b", low):
+    if re.search(r"\byou (should|need to|have to|must|will)\b", low):
         return "(assigned)"
     return speaker if speaker not in ("Unknown",) else None
 

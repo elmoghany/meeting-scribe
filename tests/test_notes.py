@@ -47,6 +47,22 @@ def test_action_items_precision_recall_corpus():
         assert notes.extract_action_items([_seg(t)]) == [], f"false positive kept: {t!r}"
 
 
+def test_action_items_no_well_ill_youcan_false_positives():
+    """Regression for real false positives found on the All-In podcast:
+    `we'?ll` matched "well"/"as well"/"well-respected", `i'?ll` matched "ill",
+    and the permissive "you can" cue fired on musings."""
+    for t in [
+        "Gavin is anchoring day two as well.",
+        "Obviously, Carpathi is super well-respected.",
+        "He was ill last week.",
+        "you can potentially live out this idea about chips someday.",
+    ]:
+        assert notes.extract_action_items([_seg(t)]) == [], f"false positive: {t!r}"
+    # Real contractions must still register.
+    assert notes.extract_action_items([_seg("I'll send the deck by Monday.")])
+    assert notes.extract_action_items([_seg("We'll ship the release this week.")])
+
+
 def test_extractive_summary_dedupes_near_duplicates():
     # The "ship v2" idea is repeated three times with minor variation.
     text = (
