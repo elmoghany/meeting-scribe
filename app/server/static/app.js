@@ -475,6 +475,30 @@ $("btn-ask").onclick = async () => {
 };
 $("chat-q").addEventListener("keydown", (e) => { if (e.key === "Enter") $("btn-ask").click(); });
 
+// ---------- ask all meetings (cross-meeting Q&A) ----------
+$("btn-ask-all").onclick = async () => {
+  const q = $("ask-q").value.trim();
+  if (!q) return;
+  $("ask-answer").innerHTML = `<div class="answer muted">Searching all meetings…</div>`;
+  try {
+    const r = await post("/api/ask", { question: q });
+    let html = `<div class="answer">${escapeHtml(r.answer)}</div>`;
+    if (r.sources && r.sources.length) {
+      html += `<div class="ask-src">sources:</div>`;
+      for (const s of r.sources) {
+        const mm = String(Math.floor(s.start / 60)).padStart(2, "0");
+        const ss = String(Math.floor(s.start % 60)).padStart(2, "0");
+        html += `<div class="hit" data-id="${s.meeting_id}"><b>${escapeHtml(s.title)}</b> ` +
+          `· ${escapeHtml(s.speaker)} ${mm}:${ss}</div>`;
+      }
+    }
+    $("ask-answer").innerHTML = html;
+    $("ask-answer").querySelectorAll(".hit[data-id]").forEach((el) =>
+      { el.onclick = () => openMeeting(el.dataset.id); });
+  } catch (e) { $("ask-answer").innerHTML = `<div class="answer">${e.message}</div>`; }
+};
+$("ask-q").addEventListener("keydown", (e) => { if (e.key === "Enter") $("btn-ask-all").click(); });
+
 // ---------- search ----------
 let searchTimer = null;
 $("search").addEventListener("input", (e) => {

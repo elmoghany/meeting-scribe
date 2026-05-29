@@ -503,6 +503,35 @@ def search(q: str):
     return db.search(q)
 
 
+@app.post("/api/ask")
+def ask_all_meetings(req: ChatReq):
+    """Cross-meeting Q&A (like Fireflies AskFred / Fathom Perfect Recall):
+    retrieve the most relevant segments across EVERY meeting via FTS, then let
+    the notes backend answer over them with per-meeting citations."""
+    from ..models import Segment
+    from ..pipeline.notes import fts_query_from_question, get_notes_backend
+
+    q = req.question.strip()
+    if not q:
+        raise HTTPException(400, "Empty question")
+    ftsq = fts_query_from_question(q)
+    hits = db.search(ftsq, limit=40) if ftsq else []
+    if not hits:
+        return {"question": q, "answer": "I couldn't find anything about that "
+                "across your meetings.", "sources": []}
+    # Turn hits into segments whose speaker carries the meeting citation, so the
+    # backend's answer (and the extractive retrieval) is attributable.
+    ctx = []
+    for h in hits:
+        text = (h.get("snippet") or "").replace("[", "").replace("]", "")
+        ctx.append(Segment(start=h.get("start", 0.0), end=h.get("start", 0.0) + 1,
+                           text=text, speaker=f"{h['title']} · {h['speaker']}",
+                           source="batch"))
+    answer = get_notes_backend().chat(q, ctx)
+    return {"question": q, "answer": answer,
+            "sources": hits[:10]}
+
+
 # --------------------------------------------------------------------------- #
 # Zoom integration (auto-record scheduled meetings)
 # --------------------------------------------------------------------------- #

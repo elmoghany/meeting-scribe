@@ -27,7 +27,10 @@ _STOP = set(
     "be been being this that these those i you he she it we they me him her us them my "
     "your his its our their so do does did doing have has had not no yes will would can "
     "could should may might must just about into over than too very can't won't im ive "
-    "okay ok yeah yep nope uh um like really".split()
+    "okay ok yeah yep nope uh um like really "
+    # interrogatives / fillers — never useful content or search terms
+    "what when where who whom whose why how which "
+    "get got going gonna want need know think".split()
 )
 _SENT_SPLIT = re.compile(r"(?<=[.!?])\s+")
 
@@ -316,6 +319,23 @@ def _parse_llm_json(raw: str, segments: list[Segment]) -> tuple[Summary, list[Ac
 
 def to_text(segments: list[Segment]) -> str:
     return "\n".join(f"{s.speaker}: {s.text.strip()}" for s in segments)
+
+
+def fts_query_from_question(question: str) -> str:
+    """Turn a natural-language question into a safe FTS5 MATCH query for
+    cross-meeting retrieval: salient terms (stopwords/short words dropped),
+    each quoted, OR-joined for recall. Returns "" if nothing salient.
+
+    Quoting each term neutralizes FTS operator characters; OR (not the implicit
+    AND) is used so a question rarely-all-present in one segment still matches.
+    """
+    terms = []
+    seen = set()
+    for t in _tokenize(question):          # already drops stopwords + len<=2
+        if t not in seen:
+            seen.add(t)
+            terms.append('"' + t.replace('"', "") + '"')
+    return " OR ".join(terms)
 
 
 class ExtractiveNotes:

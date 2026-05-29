@@ -87,3 +87,14 @@ Tracking the autonomous feature-parity work against Otter.ai. Everything stays
 15. ⬜ Sentiment / topic tags per meeting (lightweight, key-free)
 
 | CRM/Slack/Notion integrations | ✅ via key-free outbound webhook |
+
+## Competitive parity (researched May 2026 vs Otter/Fireflies/Fathom/tl;dv/Granola)
+Must-haves all met (transcription, summaries, action items, speaker ID).
+Differentiators present: bot-free device capture (Granola-style), persistent
+speaker recognition, talk-time + sentiment, multi-language (ES verified 3.7%),
+highlights, export, auto-record. Shipped this round:
+39. ✅ Cross-meeting AI Q&A ("ask all meetings") with citations — the headline
+    differentiator (Fireflies AskFred / Fathom Perfect Recall), done locally via
+    FTS retrieval + the notes chat backend. Expanded stopwords (interrogatives).
+Next candidates: custom vocabulary (Whisper initial_prompt — also fixes
+proper-noun errors); timestamped highlight clips; per-meeting-type templates.

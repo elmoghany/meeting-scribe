@@ -58,6 +58,7 @@ token to download the gated pyannote diarization weights once.
 | 🧠 **AI summary + decisions** | Quantized local LLM (GGUF) — no API keys. Extractive fallback always works. |
 | ✅ **Action items** | Auto-extracted with owner + due date, checkable in the UI. |
 | 💬 **Ask your meeting** | Chat over the transcript: "What did we decide about the budget?" |
+| 🧠 **Ask *all* meetings** | Cross-meeting Q&A with citations — like Fireflies AskFred / Fathom Perfect Recall, but local. |
 | 🔊 **Synced audio playback** | Click any line to jump there; the playing line highlights & auto-scrolls. |
 | ✨ **Highlights & comments** | Star key lines, add notes — collaboration without the cloud. |
 | 📊 **Talk-time analytics** | Per-speaker share, word counts, words-per-minute. |
