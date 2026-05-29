@@ -40,6 +40,25 @@ def test_extractive_summary_dedupes_near_duplicates():
     assert "marketing" in joined and "auth" in joined
 
 
+def test_extractive_summary_strips_speaker_labels():
+    """Real bug from a multi-speaker YouTube verification: the extractive
+    summary included sentences like "Speaker 1: Yeah." — speaker prefixes were
+    leaking into the scored sentence pool. Fix: summarize plain transcript text,
+    not the speaker-labeled form."""
+    segs = [
+        _seg("Yeah.", speaker="Speaker 1"),
+        _seg("OK so what is a neural network?", speaker="Speaker 2"),
+        _seg("Right.", speaker="Speaker 1"),
+        _seg("A neural network is a mathematical abstraction of the brain.",
+             speaker="Speaker 2"),
+        _seg("A neural network has knobs and the knobs need a proper setting.",
+             speaker="Speaker 2"),
+    ]
+    summary, _ = notes.ExtractiveNotes().summarize(segs)
+    blob = " ".join([summary.overview] + summary.key_points).lower()
+    assert "speaker 1:" not in blob and "speaker 2:" not in blob
+
+
 def test_extractive_decisions_dedupe():
     text = (
         "We decided to use OAuth. "

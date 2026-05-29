@@ -278,7 +278,11 @@ class ExtractiveNotes:
     backend = "extractive"
 
     def summarize(self, segments: list[Segment]) -> tuple[Summary, list[ActionItem]]:
-        return extractive_summary(to_text(segments)), extract_action_items(segments)
+        # Summarize over plain transcript text — passing the speaker-labeled
+        # form ("Speaker 1: …") would let labels leak into the chosen sentences
+        # ("Speaker 1: Yeah." would score and surface as a key point).
+        plain = " ".join(s.text.strip() for s in segments if s.text.strip())
+        return extractive_summary(plain), extract_action_items(segments)
 
     def chat(self, question: str, segments: list[Segment], history=None) -> str:
         # Keyword retrieval over segments; return the best-matching lines.
