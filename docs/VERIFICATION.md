@@ -98,3 +98,39 @@ It's really just a complicated mathematical expression with knobs. Speaker 1: Ye
 - 19 transcript segments
 - 2 distinct speakers
 - 6 action items
+
+---
+
+# Findings & improvement backlog (from the runs above)
+
+What two real-world runs (single-speaker Jobs, two-speaker Karpathy) revealed,
+with honest priorities. Updated as runs accumulate.
+
+## Fixed
+- **Speaker labels leaked into the extractive summary.** The Karpathy run's
+  overview was `"…with knobs. Speaker 1: Yeah."` — `ExtractiveNotes.summarize`
+  was scoring the labeled form `"Speaker 1: Yeah."` as a candidate sentence.
+  Fixed: summarize plain transcript text (commit a02f2d3, test added).
+
+## Confirmed working
+- **Transcription accuracy is strong**: WER 3.8% (clean single speaker) and
+  8.4% (2-speaker technical interview) — both well under the 20% "good" bar.
+- **Diarization separates real conversation**: 2 speakers correctly detected and
+  assigned on Karpathy (Lex intro → one label, Karpathy answers → the other).
+
+## Open improvements (prioritized, not yet done)
+1. **Action-item precision on conversational audio.** The Karpathy podcast
+   yielded 6 "action items" — a podcast has ~none. The `_ACTION_CUES` regex
+   fires on explanatory/hypothetical speech ("we need to find the setting of
+   the knobs"). Needs the actual false-positive sentences (in the run's
+   result.json on the cluster) to tune safely without regressing real-meeting
+   recall. **Blocked on: capturing those examples.**
+2. **Proper-noun errors** ("Andrej"→"Andre", "Fridman"→"Friedman"). Inherent to
+   `small.en`; `large-v3` (the production batch model) should do better. Worth
+   a confirming run with `--model large-v3`.
+3. **Overview quality.** Currently the first two key points joined; for long
+   monologues this can be a mid-sentence fragment. An LLM backend (llamacpp/
+   transformers) already produces a real overview; the extractive overview is
+   the floor, not the ceiling.
+4. **Stress test ≥3 speakers.** Pending a 4-host run (All-In Podcast) — was
+   started but blocked on a Cornell VPN drop. Re-run when connectivity is back.
