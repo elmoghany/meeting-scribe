@@ -141,9 +141,11 @@ with honest priorities. Updated as runs accumulate.
 1. **Proper-noun errors** ("Andrej"→"Andre", "Fridman"→"Friedman"). Inherent to
    `small.en`; `large-v3` (the production batch model) should do better. Worth
    a confirming run with `--model large-v3`.
-2. **Overview quality.** Currently the first two key points joined; for long
-   monologues this can be a mid-sentence fragment. An LLM backend (llamacpp/
-   transformers) already produces a real overview; the extractive overview is
-   the floor, not the ceiling.
+2. **Overview quality** — *fixed.* The overview used the first two key points
+   in document order, which for a meeting is usually the intro/greeting
+   ("thanks for joining") rather than the substance. Now it leads with the
+   highest-*scored* (most central) sentence, adding a second only if the lead
+   is short. Test guards that high-signal content wins over intro position.
+   The LLM backend still produces a richer overview when configured.
 3. **Stress test ≥3 speakers.** Pending a 4-host run (All-In Podcast) — was
    started but blocked on a Cornell VPN drop. Re-run when connectivity is back.

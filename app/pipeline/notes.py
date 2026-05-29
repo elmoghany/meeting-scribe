@@ -121,15 +121,16 @@ def extractive_summary(transcript_text: str, max_points: int = 7) -> Summary:
     scored.sort(reverse=True)
 
     # Pick top-scoring sentences, skipping near-duplicates of already-chosen ones.
-    picked: list[tuple[int, str]] = []  # (orig_index, sentence)
-    for _score, idx, s in scored:
-        if any(_too_similar(s, t) for _, t in picked):
+    picked: list[tuple[float, int, str]] = []  # (score, orig_index, sentence)
+    for score, idx, s in scored:
+        if any(_too_similar(s, t) for _, _, t in picked):
             continue
-        picked.append((idx, s))
+        picked.append((score, idx, s))
         if len(picked) >= max_points:
             break
-    picked.sort(key=lambda x: x[0])
-    key_points = [_clean(s) for _, s in picked]
+    # key points render in document order for readability
+    by_doc = sorted(picked, key=lambda x: x[1])
+    key_points = [_clean(s) for _, _, s in by_doc]
 
     # Dedupe decisions the same way.
     decisions: list[str] = []
@@ -143,7 +144,13 @@ def extractive_summary(transcript_text: str, max_points: int = 7) -> Summary:
         if len(decisions) >= 5:
             break
 
-    overview = " ".join(key_points[:2])
+    # Overview = the highest-SCORED sentence(s), not the first in document order
+    # (which is usually an intro/greeting). Lead with the single most central
+    # sentence; add the next-best only if the lead is short, and cap length.
+    by_score = [s for _, _, s in picked]  # picked is already score-desc
+    overview = _clean(by_score[0]) if by_score else ""
+    if by_score and len(overview.split()) < 8 and len(by_score) > 1:
+        overview = overview + " " + _clean(by_score[1])
     return Summary(overview=overview, key_points=key_points, decisions=decisions)
 
 

@@ -155,6 +155,22 @@ def test_keywords_empty():
     assert notes.keywords([]) == []
 
 
+def test_overview_prefers_high_signal_over_intro_position():
+    """Overview should lead with the most central sentence, not whatever came
+    first (usually greetings). The recurring topic here is the budget/launch,
+    not the 'thanks for joining' opener."""
+    text = (
+        "Thanks everyone for joining the call today. "
+        "We need to finalize the launch budget. The launch budget drives the "
+        "whole launch plan and the launch budget is the main blocker. "
+        "Marketing is waiting on the launch budget decision. "
+        "Anyway, nice weather lately."
+    )
+    s = notes.extractive_summary(text, max_points=4)
+    assert "budget" in s.overview.lower()           # high-signal content
+    assert "thanks" not in s.overview.lower()        # not the intro greeting
+
+
 def test_extractive_summary_nonempty():
     text = ("We need to ship the v2 release. The v2 release depends on the new "
             "auth service. We decided to use OAuth for auth. Marketing wants the "
