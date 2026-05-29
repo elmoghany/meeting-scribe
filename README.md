@@ -146,7 +146,9 @@ and **Allow List** to `http://localhost:8765/oauth/zoom/callback`, add scopes
 
 ## Roadmap / not-yet
 
-* Headless meeting-join bot (Zoom Meeting SDK) — would let it attend without you.
+* Headless meeting-join bot — **scaffolded** ([`bot/`](bot/README.md): JWT,
+  Python runner, C++ SDK glue, Docker, scheduler dispatch); pending a one-time
+  Zoom Meeting SDK download + build to run end-to-end.
 * Google Calendar auto-record (same scheduler, Google OAuth backend).
 * Real-time diarization (currently live = "Me"/"Others", full diarization in batch).
 * Multi-meeting concurrent recording.
