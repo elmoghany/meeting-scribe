@@ -111,6 +111,13 @@ with honest priorities. Updated as runs accumulate.
   overview was `"…with knobs. Speaker 1: Yeah."` — `ExtractiveNotes.summarize`
   was scoring the labeled form `"Speaker 1: Yeah."` as a candidate sentence.
   Fixed: summarize plain transcript text (commit a02f2d3, test added).
+- **Action-item false positives on conversational audio** (the 6 bogus items
+  on Karpathy). Added an `_is_actionable()` precision filter run after a cue
+  matches — rejects questions, <4-word fragments, and hedged musings ("maybe
+  we should look into it someday") that lack a real commitment. Guarded by a
+  precision+recall corpus test so genuine items survive. Purely explanatory
+  imperatives ("we need to find the setting of the knobs") still pass the
+  regex heuristic by design — the LLM backend is what disambiguates those.
 
 ## Confirmed working
 - **Transcription accuracy is strong**: WER 3.8% (clean single speaker) and
@@ -118,19 +125,13 @@ with honest priorities. Updated as runs accumulate.
 - **Diarization separates real conversation**: 2 speakers correctly detected and
   assigned on Karpathy (Lex intro → one label, Karpathy answers → the other).
 
-## Open improvements (prioritized, not yet done)
-1. **Action-item precision on conversational audio.** The Karpathy podcast
-   yielded 6 "action items" — a podcast has ~none. The `_ACTION_CUES` regex
-   fires on explanatory/hypothetical speech ("we need to find the setting of
-   the knobs"). Needs the actual false-positive sentences (in the run's
-   result.json on the cluster) to tune safely without regressing real-meeting
-   recall. **Blocked on: capturing those examples.**
-2. **Proper-noun errors** ("Andrej"→"Andre", "Fridman"→"Friedman"). Inherent to
+## Open improvements (prioritized)
+1. **Proper-noun errors** ("Andrej"→"Andre", "Fridman"→"Friedman"). Inherent to
    `small.en`; `large-v3` (the production batch model) should do better. Worth
    a confirming run with `--model large-v3`.
-3. **Overview quality.** Currently the first two key points joined; for long
+2. **Overview quality.** Currently the first two key points joined; for long
    monologues this can be a mid-sentence fragment. An LLM backend (llamacpp/
    transformers) already produces a real overview; the extractive overview is
    the floor, not the ceiling.
-4. **Stress test ≥3 speakers.** Pending a 4-host run (All-In Podcast) — was
+3. **Stress test ≥3 speakers.** Pending a 4-host run (All-In Podcast) — was
    started but blocked on a Cornell VPN drop. Re-run when connectivity is back.

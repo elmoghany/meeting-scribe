@@ -45,6 +45,14 @@ _DECISION_CUES = re.compile(
     r"final(ize|ized)?|we'?re going with|approved)\b",
     re.IGNORECASE,
 )
+# Hedged / speculative framing — a musing, not a commitment.
+_HEDGE = re.compile(
+    r"\b(maybe|perhaps|probably|i think|i guess|i feel like|i suspect|i mean|"
+    r"i wonder|hopefully|someday|some day|at some point|kind of|sort of)\b",
+    re.IGNORECASE,
+)
+# Strong first-person/again commitment — overrides a hedge.
+_STRONG_COMMIT = re.compile(r"\b(i'?ll|i will|we'?ll|we will)\b", re.IGNORECASE)
 _DUE = re.compile(
     r"\b(by|before|on|due)\s+"
     r"(today|tomorrow|tonight|monday|tuesday|wednesday|thursday|friday|saturday|sunday|"
@@ -207,6 +215,8 @@ def extract_action_items(segments: list[Segment]) -> list[ActionItem]:
         for sent in _sentences(seg.text):
             if not _ACTION_CUES.search(sent):
                 continue
+            if not _is_actionable(sent):
+                continue
             norm = sent.lower().strip()
             if norm in seen:
                 continue
@@ -216,6 +226,25 @@ def extract_action_items(segments: list[Segment]) -> list[ActionItem]:
             items.append(ActionItem(text=_clean(sent), owner=owner,
                                     due=due_m.group(0) if due_m else None))
     return items
+
+
+def _is_actionable(sent: str) -> bool:
+    """Precision filter applied AFTER a cue matches. Rejects the common
+    conversational false positives — questions, trivial fragments, and hedged
+    musings without a real commitment — while keeping genuine action items.
+
+    Deliberately conservative: a hedge only disqualifies when there's no strong
+    first-person commitment ("I'll", "we will") and no due date, so
+    "I'll maybe send it Friday" still counts.
+    """
+    s = sent.strip()
+    if s.endswith("?"):
+        return False                       # questions aren't action items
+    if len(s.split()) < 4:
+        return False                       # "Let's see." / "I'll check." fragments
+    if _HEDGE.search(s) and not (_STRONG_COMMIT.search(s) or _DUE.search(s)):
+        return False                       # "maybe we should look into it someday"
+    return True
 
 
 def _infer_owner(sentence: str, speaker: str) -> str | None:

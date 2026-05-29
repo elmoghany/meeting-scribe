@@ -22,6 +22,31 @@ def test_extract_action_items_owner_and_due():
     assert sam_item.due and "friday" in sam_item.due.lower()
 
 
+def test_action_items_precision_recall_corpus():
+    """Guards both directions: real action items must survive, conversational
+    false positives (questions, hedged musings, fragments) must be rejected."""
+    keep = [
+        "I'll send the quarterly report by Friday.",
+        "Alex, you should review the new design before tomorrow.",
+        "We need to ship the release this week.",
+        "Let's schedule a follow-up next Monday.",
+        "I will email the vendor about pricing.",
+        "Please update the deck before the standup.",
+        "I'll maybe send the notes on Friday.",          # hedge + strong commit -> kept
+    ]
+    drop = [
+        "What should we do about the budget?",            # question
+        "Do you think we need to worry about latency?",   # question
+        "Maybe we should look into that someday.",        # hedged, no commitment
+        "I think we should explore that idea.",           # hedged musing
+        "Let's see.",                                     # trivial fragment
+    ]
+    for t in keep:
+        assert notes.extract_action_items([_seg(t)]), f"lost a real action item: {t!r}"
+    for t in drop:
+        assert notes.extract_action_items([_seg(t)]) == [], f"false positive kept: {t!r}"
+
+
 def test_extractive_summary_dedupes_near_duplicates():
     # The "ship v2" idea is repeated three times with minor variation.
     text = (
