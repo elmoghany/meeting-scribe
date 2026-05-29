@@ -160,19 +160,26 @@ pre-fix run gave `['Others']`. Correctness restored on the mismatched node.
 With the CPU retry in place this is now a performance concern, not a
 correctness one — diarization no longer silently degrades on `taylor`.
 
-## large-v3 surprise: under-transcription (2026-05-29)
-On the Karpathy clip, `large-v3` gave **WER 15.9%** (146/919) vs `small.en`'s
-8.4% — and notably **hyp=820 < ref=919**, i.e. large-v3 produced ~100 *fewer*
-words: it's under-transcribing, not mis-spelling. Two caveats: (1) WER here is
-agreement with YouTube's *own auto-captions* (themselves ASR, not ground truth),
-so "higher WER" ≠ "worse"; (2) but a 100-word shortfall is a real content gap.
-Leading hypothesis: `transcribe_file` uses `vad_filter=True`, which can over-trim
-with large-v3. **Investigating** with a `vad_filter=False` comparison run.
+## large-v3 "under-transcription" → was a device-detection bug (RESOLVED 2026-05-29)
+First large-v3 run showed **WER 15.9%**, **hyp=820 < ref=919** (~100 words
+short) — looked like under-transcription. Root cause was a real bug, not the
+model: `device.detect()` keyed off **torch**'s CUDA, but faster-whisper runs on
+**CTranslate2** (separate CUDA runtime). On the A40 (torch cu130 can't see the
+cu12 driver) detect() returned CPU, so large-v3 ran on **CPU int8** — degraded
++ slow.
+
+A direct GPU experiment isolated it: large-v3 forced onto the GPU gave
+**WER 8.1% (vad off) / 8.5% (vad on)**, hyp≈890–902 — full transcription. After
+fixing detect() to use `ctranslate2.get_cuda_device_count()` (+ a CPU load
+fallback), the cluster re-run confirms **WER 8.5%, hyp=890 on GPU** with real
+diarization (`['Speaker 1','Speaker 2']`). So large-v3 ≈ small.en on
+WER-vs-auto-captions here, but it now runs correctly + fast on the cluster
+instead of silently on CPU int8.
 
 ## Open improvements (prioritized)
-1. **Proper-noun errors** ("Andrej"→"Andre", "Fridman"→"Friedman"). `small.en`
-   misses them; checking whether large-v3 fixes them is folded into the
-   under-transcription investigation above.
+1. **Proper-noun errors** ("Andrej"→"Andre", "Fridman"→"Friedman"). Present in
+   both small.en and large-v3 output vs the captions — minor, model-inherent,
+   not worth special-casing.
 2. **Overview quality** — *fixed.* The overview used the first two key points
    in document order, which for a meeting is usually the intro/greeting
    ("thanks for joining") rather than the substance. Now it leads with the
