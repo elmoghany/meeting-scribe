@@ -1,0 +1,46 @@
+"""Argument parsing / dispatch for the `meetingscribe` CLI entry point.
+
+Handlers are monkeypatched so we exercise parsing + dispatch without running
+heavy command bodies (uvicorn, model downloads, etc.). main() re-reads the
+module-global handlers each call, so patching cli._cmd_* takes effect.
+"""
+import pytest
+
+from app import cli
+
+
+def test_serve_parses_host_port_reload(monkeypatch):
+    cap = {}
+    monkeypatch.setattr(cli, "_cmd_serve",
+                        lambda a: cap.update(host=a.host, port=a.port, reload=a.reload))
+    assert cli.main(["serve", "--port", "9999", "--reload"]) == 0
+    assert cap == {"host": "127.0.0.1", "port": 9999, "reload": True}  # default host, parsed port
+
+
+def test_record_defaults_and_invalid_platform(monkeypatch):
+    cap = {}
+    monkeypatch.setattr(cli, "_cmd_record",
+                        lambda a: cap.update(title=a.title, platform=a.platform))
+    cli.main(["record"])
+    assert cap["title"] == "Untitled meeting" and cap["platform"] == "other"
+    with pytest.raises(SystemExit):           # platform restricted to a choice set
+        cli.main(["record", "-p", "bogus"])
+
+
+def test_search_requires_query(monkeypatch):
+    monkeypatch.setattr(cli, "_cmd_search", lambda a: 0)
+    with pytest.raises(SystemExit):           # positional query is required
+        cli.main(["search"])
+    assert cli.main(["search", "budget"]) == 0
+
+
+def test_no_subcommand_errors():
+    with pytest.raises(SystemExit):           # subparser is required=True
+        cli.main([])
+
+
+def test_return_code_passthrough(monkeypatch):
+    monkeypatch.setattr(cli, "_cmd_doctor", lambda a: 3)
+    assert cli.main(["doctor"]) == 3          # non-zero rc propagates
+    monkeypatch.setattr(cli, "_cmd_doctor", lambda a: None)
+    assert cli.main(["doctor"]) == 0          # None -> 0
