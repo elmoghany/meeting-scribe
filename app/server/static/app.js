@@ -390,7 +390,16 @@ async function refreshMeetings() {
   const list = needle
     ? all.filter((m) => (m.title || "").toLowerCase().includes(needle))
     : all;
-  $("ml-empty").classList.toggle("hidden", !(needle && list.length === 0));
+  const emptyEl = $("ml-empty");
+  if (all.length === 0) {
+    emptyEl.textContent = "No meetings yet — start recording above to capture one.";
+    emptyEl.classList.remove("hidden");
+  } else if (needle && list.length === 0) {
+    emptyEl.textContent = "No meetings match.";
+    emptyEl.classList.remove("hidden");
+  } else {
+    emptyEl.classList.add("hidden");
+  }
   const ul = $("meeting-list"); ul.innerHTML = "";
   for (const m of list) {
     const li = document.createElement("li");
