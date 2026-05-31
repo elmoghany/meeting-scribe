@@ -152,3 +152,4 @@ mark { background: #3a3f10; color: #f7f7c0; }
 .help-box td:first-child { width: 92px; }
 .help-box kbd { background: #0f1218; border: 1px solid var(--line); border-radius: 5px;
   padding: 2px 7px; font: 12px ui-monospace, monospace; }
+.ghost.suggest { border-color: var(--accent2); color: var(--accent2); }

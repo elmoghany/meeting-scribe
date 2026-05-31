@@ -19,6 +19,26 @@ def test_system_prompt_appends_template():
     assert system_prompt_for("nonexistent") == system_prompt_for(None)
 
 
+def test_detect_meeting_type():
+    from app.pipeline.notes import detect_meeting_type
+
+    def segs(text):
+        return [Segment(start=0, end=1, text=text, speaker="Me", source="batch")]
+
+    assert detect_meeting_type(segs(
+        "Quick stand-up. Any blockers? What are you working on today?")) == "standup"
+    assert detect_meeting_type(segs(
+        "Tell me about yourself and walk me through your previous role, candidate."
+    )) == "interview"
+    assert detect_meeting_type(segs(
+        "Retro time: what went well, what didn't go well, start stop continue."
+    )) == "retro"
+    assert detect_meeting_type(segs(
+        "Let's talk pricing and your budget; reach the decision maker about the contract."
+    )) == "sales"
+    assert detect_meeting_type(segs("We discussed the weather and lunch plans.")) is None
+
+
 def test_all_templates_have_distinct_guidance():
     nonempty = {k: v for k, v in SUMMARY_TEMPLATES.items() if v}
     assert len(set(nonempty.values())) == len(nonempty)  # all distinct

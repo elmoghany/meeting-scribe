@@ -56,7 +56,7 @@ token to download the gated pyannote diarization weights once.
 | 👥 **Speaker diarization** | pyannote (or a key-free fallback) separates remote speakers; your mic is anchored as "Me". |
 | 🧑‍🤝‍🧑 **Remembers voices** | Name a speaker once — they're auto-recognized in your future meetings (local voice embeddings, no cloud). |
 | 🧠 **AI summary + decisions** | Quantized local LLM (GGUF) — no API keys. Extractive fallback always works. |
-| 🧩 **Summary templates** | Tailor notes per meeting type — standup, 1:1, interview, retro, sales. |
+| 🧩 **Summary templates** | Tailor notes per meeting type — standup, 1:1, interview, retro, sales; auto-suggested from the transcript. |
 | ✅ **Action items** | Auto-extracted with owner + due date; add/edit/delete manually, checkable in the UI. |
 | 💬 **Ask your meeting** | Chat over the transcript: "What did we decide about the budget?" |
 | 🧠 **Ask *all* meetings** | Cross-meeting Q&A with citations — like Fireflies AskFred / Fathom Perfect Recall, but local. |

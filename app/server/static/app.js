@@ -415,6 +415,11 @@ async function openMeeting(id) {
     `${d.meeting.platform} · ${d.meeting.status} · ${mins.toFixed(0)} min · ${d.meeting.language || ""}`;
   await loadTemplates();
   if (d.meeting.template) $("tmpl-sel").value = d.meeting.template;
+  if (d.suggested_template) {
+    $("tmpl-sel").value = d.suggested_template;
+    $("btn-regen").title = `Looks like a ${d.suggested_template.replace(/_/g, " ")} — Regen applies this template`;
+    $("btn-regen").classList.add("suggest");
+  } else { $("btn-regen").classList.remove("suggest"); }
 
   // tags
   const tg = $("tags"); tg.innerHTML = "";

@@ -317,6 +317,35 @@ def system_prompt_for(template: str | None) -> str:
     return _NOTES_SYS + SUMMARY_TEMPLATES.get((template or "general"), "")
 
 
+# Keyword signals per meeting type (lowercase substring match over the transcript).
+_TYPE_SIGNALS: dict[str, tuple[str, ...]] = {
+    "standup": ("stand-up", "standup", "daily sync", "blockers", "blocker",
+                "what did you do yesterday", "working on today", "any blockers"),
+    "interview": ("candidate", "your experience", "tell me about yourself",
+                  "tell us about", "résumé", "resume", "why do you want to work",
+                  "walk me through your", "previous role"),
+    "retro": ("retrospective", "retro", "what went well", "what didn't go well",
+              "didn't go well", "action items for next sprint", "start stop continue"),
+    "one_on_one": ("one-on-one", "1:1", "1 on 1", "career growth", "your growth",
+                   "feedback for you", "how are you feeling about", "development plan"),
+    "sales": ("pricing", "the demo", "your budget", "contract", "procurement",
+              "free trial", "decision maker", "next steps on the deal", "quote"),
+}
+
+
+def detect_meeting_type(segments: list[Segment], min_hits: int = 2) -> str | None:
+    """Suggest a summary template from transcript keyword signals. Returns the
+    best-matching type if it clears `min_hits`, else None (no confident guess).
+    Pure + deterministic."""
+    text = " ".join(s.text for s in segments).lower()
+    best, best_hits = None, 0
+    for typ, signals in _TYPE_SIGNALS.items():
+        hits = sum(1 for sig in signals if sig in text)
+        if hits > best_hits:
+            best, best_hits = typ, hits
+    return best if best_hits >= min_hits else None
+
+
 def _llm_prompt(transcript: str) -> str:
     return f"Transcript:\n{transcript}\n\nReturn the JSON now."
 

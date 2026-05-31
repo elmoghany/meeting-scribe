@@ -282,7 +282,7 @@ def meeting_detail(meeting_id: str):
         raise HTTPException(404, "Meeting not found")
     summary = db.get_summary(meeting_id)
     segs = db.get_segments(meeting_id, source="batch") or db.get_segments(meeting_id)
-    from ..pipeline.notes import keywords, sentiment
+    from ..pipeline.notes import detect_meeting_type, keywords, sentiment
     return {
         "meeting": m.to_dict(),
         "summary": summary.to_dict() if summary else None,
@@ -291,6 +291,8 @@ def meeting_detail(meeting_id: str):
         "tags": db.get_tags(meeting_id),
         "topics": keywords(segs),
         "sentiment": sentiment(segs),
+        # Suggest a template only when the user hasn't set one yet.
+        "suggested_template": (detect_meeting_type(segs) if not m.template else None),
     }
 
 
