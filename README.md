@@ -77,9 +77,13 @@ token to download the gated pyannote diarization weights once.
 ## Quickstart
 
 ```bash
-# 1. install (CPU-safe core; faster-whisper needs no torch)
+# 1. install
 python -m venv .venv && .venv/Scripts/activate        # Windows
-pip install -e .
+pip install -e .            # core: capture + transcription + dashboard (no torch)
+pip install -e ".[ml]"      # speaker diarization + local CPU batch (resemblyzer, sklearn, torch)
+#   ↑ skip [ml] only if you offload batch to a remote GPU or do capture-only;
+#     without it, diarization degrades to a single "Others" label.
+# pip install -e ".[llm]"   # optional: local quantized-LLM summaries (else extractive)
 
 # 2. configure
 cp .env.example .env        # set HUGGINGFACE_TOKEN; pick MEETINGSCRIBE_REMOTE
