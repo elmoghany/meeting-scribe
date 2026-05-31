@@ -14,6 +14,8 @@ let liveMeetingId = null;
 let highlightedIds = new Set();
 let annotations = [];
 let activeTagFilter = null;
+let selectMode = false;
+let selectedIds = new Set();
 
 function chip(label, active, onclick) {
   const s = document.createElement("span");
@@ -392,13 +394,28 @@ async function refreshMeetings() {
     const mins = m.duration_sec ? `${Math.round(m.duration_sec / 60)} min` : "";
     const words = m.stats && m.stats.words ? `${m.stats.words} words` : "";
     const stat = [mins, words].filter(Boolean).join(" · ");
-    li.innerHTML = `<div class="mtitle">${escapeHtml(m.title)}</div>` +
+    const check = selectMode
+      ? `<input type="checkbox" class="ml-check"${selectedIds.has(m.id) ? " checked" : ""}>`
+      : "";
+    li.innerHTML = `<div class="mtitle">${check}${escapeHtml(m.title)}</div>` +
       `<div class="muted">${when} · <span class="badge">${m.platform}</span> ` +
       `<span class="badge">${m.status}</span> ${tagHtml}</div>` +
       (stat ? `<div class="muted mstat">${stat}</div>` : "");
-    li.onclick = () => openMeeting(m.id);
+    if (selectMode) {
+      li.classList.toggle("picked", selectedIds.has(m.id));
+      li.onclick = () => {
+        if (selectedIds.has(m.id)) selectedIds.delete(m.id);
+        else selectedIds.add(m.id);
+        refreshMeetings();
+      };
+    } else {
+      li.onclick = () => openMeeting(m.id);
+    }
     ul.appendChild(li);
   }
+  $("ml-del").textContent = selectedIds.size ? `delete (${selectedIds.size})` : "delete";
+  $("ml-del").classList.toggle("hidden", !selectMode);
+  $("ml-select").textContent = selectMode ? "cancel" : "select";
 }
 
 async function openMeeting(id) {
@@ -734,6 +751,24 @@ $("vocab-save").onclick = async () => {
   } catch { el.textContent = "· error"; }
   setTimeout(() => { el.textContent = "· save"; }, 1200);
 };
+
+$("ml-select").addEventListener("click", () => {
+  selectMode = !selectMode;
+  selectedIds.clear();
+  refreshMeetings();
+});
+$("ml-del").addEventListener("click", async () => {
+  const ids = [...selectedIds];
+  if (!ids.length) return;
+  if (!confirm(`Delete ${ids.length} meeting${ids.length === 1 ? "" : "s"}? This cannot be undone.`)) return;
+  await api("/api/meetings/delete-batch", { method: "POST",
+    headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ids }) });
+  if (ids.includes(currentMeeting)) {
+    currentMeeting = null; $("detail-card").classList.add("hidden");
+  }
+  selectMode = false; selectedIds.clear();
+  refreshMeetings();
+});
 
 $("player").addEventListener("timeupdate", highlightPlaying);
 loadVocab();

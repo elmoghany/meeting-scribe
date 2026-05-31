@@ -437,14 +437,33 @@ def delete_audio(meeting_id: str):
     return {"removed": removed, "freed_mb": round(freed / 1e6, 1)}
 
 
-@app.delete("/api/meetings/{meeting_id}")
-def meeting_delete(meeting_id: str):
+def _delete_one(meeting_id: str) -> None:
     db.delete_meeting(meeting_id)
     import shutil
     rec = get_settings().recordings_dir / meeting_id
     if rec.exists():
         shutil.rmtree(rec, ignore_errors=True)
+
+
+@app.delete("/api/meetings/{meeting_id}")
+def meeting_delete(meeting_id: str):
+    _delete_one(meeting_id)
     return {"deleted": meeting_id}
+
+
+class BulkDeleteReq(BaseModel):
+    ids: list[str]
+
+
+@app.post("/api/meetings/delete-batch")
+def meetings_delete_batch(req: BulkDeleteReq):
+    """Delete several meetings (and their recordings) at once."""
+    deleted = []
+    for mid in req.ids:
+        if db.get_meeting(mid):
+            _delete_one(mid)
+            deleted.append(mid)
+    return {"deleted": deleted, "count": len(deleted)}
 
 
 @app.post("/api/meetings/{meeting_id}/tags")

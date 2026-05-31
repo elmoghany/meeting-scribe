@@ -100,6 +100,27 @@ def test_regenerate_notes_resummarizes():
     assert any("report" in a.text.lower() for a in db.get_action_items(mid))
 
 
+def test_delete_batch_removes_selected_meetings():
+    a, b, c_ = _mk("srv-bulk-a"), _mk("srv-bulk-b"), _mk("srv-bulk-c")
+    rec = get_settings().recordings_dir / a
+    rec.mkdir(parents=True, exist_ok=True)
+    (rec / "system.wav").write_bytes(b"RIFFxxxxWAVE")
+    with TestClient(app) as c:
+        # delete a and b, plus a nonexistent id (ignored)
+        r = c.post("/api/meetings/delete-batch", json={"ids": [a, b, "ghost"]}).json()
+        assert set(r["deleted"]) == {a, b} and r["count"] == 2
+        assert c.get(f"/api/meetings/{a}").status_code == 404
+        assert c.get(f"/api/meetings/{b}").status_code == 404
+        assert c.get(f"/api/meetings/{c_}").status_code == 200  # untouched
+    assert not rec.exists()  # recording dir removed too
+
+
+def test_delete_batch_empty_is_noop():
+    with TestClient(app) as c:
+        assert c.post("/api/meetings/delete-batch", json={"ids": []}).json() == {
+            "deleted": [], "count": 0}
+
+
 def test_delete_audio_removes_wavs_keeps_meeting():
     mid = _mk("srv-audio")
     rec = get_settings().recordings_dir / mid

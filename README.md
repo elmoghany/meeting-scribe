@@ -68,6 +68,7 @@ token to download the gated pyannote diarization weights once.
 | 📝 **Editable transcript & notes** | Double-click a line to fix a mis-transcription; edit the AI summary/key-points/decisions inline. |
 | 🔤 **Custom vocabulary** | Teach it names/jargon (dashboard or `.env`) to bias transcription — better proper nouns. |
 | 🔎 **Search everything** | SQLite FTS5 full-text search across every past meeting. |
+| 🗂️ **Bulk manage** | Multi-select meetings in the sidebar and delete in one go (audio + notes). |
 | 📝 **Export anywhere** | Markdown, plain text, **SRT/VTT subtitles**, a self-contained **HTML page**, and JSON. |
 | 🖥️ **Local web dashboard** | Start/stop, live transcript, browse, rename speakers, chat. |
 | 🔐 **100% local / MIT** | No cloud, no accounts. Data stays in `C:\cornell\meetingnotes`. |

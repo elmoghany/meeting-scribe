@@ -62,6 +62,8 @@ ul { list-style: none; padding: 0; margin: 0; }
 }
 #meeting-list li:hover { background: #1d212b; }
 #meeting-list li.active { border-color: var(--accent); background: #1d212b; }
+#meeting-list li.picked { border-color: var(--accent2); background: #221d2e; }
+#meeting-list .ml-check { width: auto; margin: 0 7px 0 0; vertical-align: middle; }
 #meeting-list .mtitle { font-weight: 600; }
 #meeting-list .mstat { font-size: 11px; opacity: .75; margin-top: 2px; }
 .badge { font-size: 10px; padding: 1px 6px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); }
