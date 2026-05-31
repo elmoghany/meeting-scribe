@@ -102,6 +102,8 @@ ul { list-style: none; padding: 0; margin: 0; }
 .annot-del:hover { color: var(--danger); }
 .spk-wrap { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
 .spk-in { width: auto; flex: 0 0 auto; min-width: 120px; margin: 0; padding: 6px 9px; font-size: 13px; }
+.merge-row { display: flex; align-items: center; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+.merge-sel { width: auto; margin: 0; padding: 5px 8px; font-size: 13px; }
 .tagbar { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 10px; align-items: center; }
 .chip { font-size: 12px; padding: 3px 10px; border-radius: 999px; border: 1px solid var(--line);
   color: var(--muted); cursor: pointer; background: #0f1218; white-space: nowrap; }

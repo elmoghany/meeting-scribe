@@ -64,7 +64,7 @@ token to download the gated pyannote diarization weights once.
 | ✨ **Highlights & comments** | Star key lines, add notes — collaboration without the cloud. |
 | ✂️ **Clips & highlight reels** | Download any line as an audio clip, or all starred lines as one reel — share a moment. |
 | 📊 **Talk-time analytics** | Per-speaker share, word counts, words-per-minute. |
-| ✏️ **Rename speakers** | Turn "Speaker 1" into real names in one click; flows to transcript, exports, analytics. |
+| ✏️ **Rename & merge speakers** | Turn "Speaker 1" into real names in one click; **merge** two labels when diarization over-splits. Flows to transcript, exports, analytics. |
 | 📝 **Editable transcript & notes** | Double-click a line to fix a mis-transcription; edit the AI summary/key-points/decisions inline. |
 | 🔤 **Custom vocabulary** | Teach it names/jargon (dashboard or `.env`) to bias transcription — better proper nouns. |
 | 🔎 **Search everything** | SQLite FTS5 full-text search across every past meeting. |

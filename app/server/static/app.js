@@ -257,6 +257,15 @@ async function saveSpeakerNames() {
   renderProfiles();  // a rename may enroll a voice profile
 }
 
+// Merge one speaker into another — fixes diarization over-counting in one click.
+// Reuses /rename-speakers: mapping {from: to} reassigns every `from` segment.
+async function mergeSpeakers() {
+  const from = $("merge-from").value, to = $("merge-to").value;
+  if (!from || !to || from === to) return;
+  await post(`/api/meetings/${currentMeeting}/rename-speakers`, { mapping: { [from]: to } });
+  openMeeting(currentMeeting);
+}
+
 async function renderProfiles() {
   const box = $("profiles");
   const ps = await api("/api/speakers").catch(() => []);
@@ -508,6 +517,19 @@ async function openMeeting(id) {
     const btn = document.createElement("button");
     btn.className = "ghost"; btn.textContent = "Save names"; btn.onclick = saveSpeakerNames;
     sp.appendChild(btn);
+    if (names.length >= 2) {
+      const opts = names.map((n) => `<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`).join("");
+      const mr = document.createElement("div"); mr.className = "merge-row";
+      mr.innerHTML = `<span class="muted">Merge</span>` +
+        `<select id="merge-from" class="merge-sel">${opts}</select>` +
+        `<span class="muted">into</span>` +
+        `<select id="merge-to" class="merge-sel">${opts}</select>` +
+        `<button class="ghost" id="merge-btn">Merge</button>`;
+      sp.appendChild(mr);
+      // default the "into" select to the second speaker so it differs from "from"
+      $("merge-to").selectedIndex = 1;
+      $("merge-btn").onclick = mergeSpeakers;
+    }
   } else sp.innerHTML = `<p class="muted">No speakers yet.</p>`;
 
   // action items (with manual add / edit / delete)

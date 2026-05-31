@@ -121,6 +121,25 @@ def test_delete_batch_empty_is_noop():
             "deleted": [], "count": 0}
 
 
+def test_merge_speakers_via_rename_collapses_labels():
+    mid = _mk("srv-merge")
+    db.replace_segments(mid, [
+        Segment(start=0, end=2, text="hi", speaker="Speaker 1", source="batch"),
+        Segment(start=2, end=4, text="hello", speaker="Speaker 2", source="batch"),
+        Segment(start=4, end=6, text="yes", speaker="Speaker 2", source="batch"),
+        Segment(start=6, end=8, text="ok", speaker="Speaker 3", source="batch"),
+    ], source="batch")
+    with TestClient(app) as c:
+        # merge Speaker 2 into Speaker 1 (the over-counting fix the UI exposes)
+        r = c.post(f"/api/meetings/{mid}/rename-speakers",
+                   json={"mapping": {"Speaker 2": "Speaker 1"}})
+        assert r.status_code == 200
+    speakers = [s.speaker for s in db.get_segments(mid, source="batch")]
+    assert "Speaker 2" not in speakers                 # gone
+    assert speakers.count("Speaker 1") == 3            # absorbed the two Speaker 2 segs
+    assert speakers.count("Speaker 3") == 1            # untouched
+
+
 def test_delete_audio_removes_wavs_keeps_meeting():
     mid = _mk("srv-audio")
     rec = get_settings().recordings_dir / mid
