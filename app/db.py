@@ -370,6 +370,30 @@ def replace_segments(meeting_id: str, segs: list[Segment], source: str) -> None:
         )
 
 
+def update_segment(segment_id: int, text: str | None = None,
+                   speaker: str | None = None) -> dict | None:
+    """Edit a segment's text and/or speaker (manual correction). The FTS index
+    stays in sync via the segments_au trigger. Returns the segment's
+    {id, meeting_id} or None if it doesn't exist."""
+    sets, args = [], []
+    if text is not None:
+        sets.append("text = ?")
+        args.append(text)
+    if speaker is not None:
+        sets.append("speaker = ?")
+        args.append(speaker)
+    if not sets:
+        return None
+    with cursor() as c:
+        row = c.execute("SELECT meeting_id FROM segments WHERE id = ?",
+                        (segment_id,)).fetchone()
+        if not row:
+            return None
+        c.execute(f"UPDATE segments SET {', '.join(sets)} WHERE id = ?",
+                  (*args, segment_id))
+    return {"id": segment_id, "meeting_id": row["meeting_id"]}
+
+
 def get_segments(meeting_id: str, source: str | None = None) -> list[Segment]:
     q = "SELECT * FROM segments WHERE meeting_id = ?"
     args: list = [meeting_id]

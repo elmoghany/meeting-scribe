@@ -35,6 +35,29 @@ def test_segments_and_fts_search():
     assert "budget" in " ".join(h["snippet"].lower() for h in hits)
 
 
+def test_update_segment_edits_text_and_fts():
+    mid = _mk("m-edit")
+    sid = db.add_segment(mid, Segment(start=0, end=2, text="the kroud was loud",
+                                      speaker="Me", source="batch"))
+    res = db.update_segment(sid, text="the crowd was loud")
+    assert res == {"id": sid, "meeting_id": mid}
+    assert db.get_segments(mid, source="batch")[0].text == "the crowd was loud"
+    # FTS reflects the correction (old token gone, new token findable)
+    hits = db.search("crowd")
+    assert any(h["meeting_id"] == mid for h in hits)
+    assert not any(h["meeting_id"] == mid for h in db.search("kroud"))
+
+
+def test_update_segment_speaker_and_missing():
+    mid = _mk("m-edit2")
+    sid = db.add_segment(mid, Segment(start=0, end=1, text="hi", speaker="Speaker 1",
+                                      source="batch"))
+    db.update_segment(sid, speaker="Sam")
+    assert db.get_segments(mid, source="batch")[0].speaker == "Sam"
+    assert db.update_segment(999999, text="x") is None   # missing
+    assert db.update_segment(sid) is None                  # nothing to update
+
+
 def test_replace_segments_swaps_source():
     mid = _mk("m-replace")
     db.add_segment(mid, Segment(start=0, end=1, text="draft", speaker="Me", source="live"))

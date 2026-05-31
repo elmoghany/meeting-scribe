@@ -508,6 +508,24 @@ def toggle_action(item_id: int, done: bool = True):
     return {"id": item_id, "done": done}
 
 
+class SegmentEditReq(BaseModel):
+    text: str | None = None
+    speaker: str | None = None
+
+
+@app.patch("/api/segments/{segment_id}")
+def edit_segment(segment_id: int, req: SegmentEditReq):
+    """Manually correct a transcript line's text and/or speaker."""
+    if req.text is None and req.speaker is None:
+        raise HTTPException(400, "Nothing to update")
+    res = db.update_segment(segment_id, text=req.text, speaker=req.speaker)
+    if not res:
+        raise HTTPException(404, "Segment not found")
+    from ..pipeline.process import export_markdown
+    export_markdown(res["meeting_id"])
+    return res
+
+
 @app.get("/api/action-items")
 def all_action_items(open_only: bool = False, owner: str | None = None):
     """Every action item across all meetings, with meeting context."""

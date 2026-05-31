@@ -77,8 +77,12 @@ function segEl(s, withStar) {
   const ss = String(Math.floor(s.start % 60)).padStart(2, "0");
   const me = s.speaker === "Me" ? " me" : "";
   div.innerHTML = `<span class="ts">${mm}:${ss}</span>` +
-    `<span class="who${me}">${s.speaker}</span>${escapeHtml(s.text)}`;
+    `<span class="who${me}">${s.speaker}</span>` +
+    `<span class="txt">${escapeHtml(s.text)}</span>`;
   if (withStar && s.id != null) {
+    const txt = div.querySelector(".txt");
+    txt.title = "Double-click to edit";
+    txt.ondblclick = (e) => { e.stopPropagation(); editSegment(s.id, txt); };
     const star = document.createElement("span");
     star.className = "star";
     star.textContent = highlightedIds.has(s.id) ? "★" : "☆";
@@ -93,6 +97,31 @@ function segEl(s, withStar) {
   }
   div.onclick = () => seekTo(s.start);
   return div;
+}
+
+function editSegment(segId, txtEl) {
+  const orig = txtEl.textContent;
+  txtEl.contentEditable = "true";
+  txtEl.classList.add("editing");
+  txtEl.focus();
+  const finish = async (save) => {
+    txtEl.contentEditable = "false";
+    txtEl.classList.remove("editing");
+    txtEl.onkeydown = txtEl.onblur = null;
+    const val = txtEl.textContent.trim();
+    if (save && val && val !== orig) {
+      try {
+        await api(`/api/segments/${segId}`, { method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text: val }) });
+      } catch { txtEl.textContent = orig; }
+    } else { txtEl.textContent = orig; }
+  };
+  txtEl.onkeydown = (e) => {
+    if (e.key === "Enter") { e.preventDefault(); finish(true); }
+    else if (e.key === "Escape") { e.preventDefault(); finish(false); }
+  };
+  txtEl.onblur = () => finish(true);
 }
 
 async function toggleHighlight(segId, div, star) {
