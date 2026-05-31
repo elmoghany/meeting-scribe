@@ -42,6 +42,26 @@ def test_default_threshold_separates_realistic_speakers_but_055_collapses():
     assert len(set(at_old)) == 1, "0.55 is the broken setting that merged them"
 
 
+def test_single_speaker_not_over_segmented_at_default():
+    # Regression guard for lowering the threshold to 0.40: ONE speaker's segment
+    # d-vectors vary (different content/tone) with intra-speaker cosine distance
+    # up to ~0.30 (observed min/mean ~0.05/0.23 on a real clip). The default must
+    # still keep a cohesive single speaker as ONE cluster, not split a monologue
+    # into phantom "Speaker 2/3".
+    base = _v(1, 0, 0, 0, 0, 0, 0)
+    embeds = []
+    for k in range(6):
+        v = base.copy()
+        v[1 + k] += 0.62           # distinct orthogonal jitter -> pairwise cos dist ~0.28
+        embeds.append(v / np.linalg.norm(v))
+    # sanity: intra-speaker spread sits below the default so the guard is meaningful
+    from scipy.spatial.distance import pdist
+    assert float(pdist(np.vstack(embeds), metric="cosine").max()) < DEFAULT_DIAR_THRESHOLD
+    labels = labels_from_embeddings(embeds, list(range(6)), 6,
+                                    distance_threshold=DEFAULT_DIAR_THRESHOLD)
+    assert len(set(labels)) == 1, "single speaker must not over-segment at the default"
+
+
 def test_two_speakers_alternating():
     A, B = _v(1, 0, 0), _v(0, 1, 0)
     labels = labels_from_embeddings([A, B, A, B], [0, 1, 2, 3], 4, distance_threshold=0.5)
