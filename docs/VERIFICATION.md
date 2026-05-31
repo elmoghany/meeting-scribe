@@ -286,9 +286,21 @@ exact** (universal collapse). Clips now resolve 2, 3, and 4 speakers (one
 `exp 4 → det 4` exact). Mean WER 0.19 (median 0.17) on these noisier
 search-result clips.
 
+**Single-speaker over-segmentation check.** Lowering the threshold could fracture
+a monologue into phantom speakers, so a separate run on 5 "solo talk / audiobook"
+clips (expected 1): detected **1, 3, 1, 1, 2** (the det-1 with WER>1 is degenerate
+non-speech). Clear monologues stay at one speaker; two "solo" clips split — though
+solo search results often contain an intro announcer / Q&A / second narrator, so
+some of those splits are likely real. A synthetic regression test pins that a
+*cohesive* single speaker (intra-distance ~0.28) stays one cluster at 0.40.
+
 **Takeaway / honest limits.** The catastrophic universal collapse is gone; the
-key-free path now genuinely separates speakers. It still **under-counts** on
-some clips (similar-sounding voices or one dominant speaker merge) — expected
-for a key-free d-vector approach. Users who accept the gated terms and set a HF
-token get pyannote, which separates speakers more reliably; the key-free default
-is the no-token fallback and is now correct-in-the-common-case rather than broken.
+key-free path now genuinely separates speakers. But Resemblyzer d-vectors are not
+cleanly separable, so a single global threshold has **bidirectional ±1 noise** —
+it can under-count similar-sounding voices and occasionally over-count an
+expressive monologue. 0.40 is the calibrated operating point (fixes the
+catastrophic collapse, balanced both ways); it is deliberately NOT over-tuned to a
+handful of noisy category-assumption clips. Users who accept the gated terms and
+set a HF token get pyannote, which separates speakers more reliably; the key-free
+default is the no-token fallback and is now correct-in-the-common-case rather than
+broken. Speakers are always editable in the UI, so ±1 is recoverable.
