@@ -235,24 +235,60 @@ instead of silently on CPU int8.
    is short. Test guards that high-signal content wins over intro position.
    The LLM backend still produces a richer overview when configured.
 3. **Stress test ≥3 speakers.** Now automated — see *Multi-speaker
-   verification* below. A `gpu`-partition batch (job 969744) runs the full
-   pipeline on panel/interview/roundtable clips and scores speaker-count
-   accuracy; numbers recorded once it completes.
+   verification* below. It found (and fixed) a real key-free diarization bug.
 
-## Multi-speaker verification (diarization speaker-count) — METHODOLOGY
+## Multi-speaker verification (diarization speaker-count) — RESULTS 2026-05-29
 `verify_batch` only scores single-stream WER; it never checks whether
 diarization found the *right number of people*. `scripts/verify_multispeaker.py`
 closes that gap. For each clip it runs the **full pipeline** — faster-whisper
-transcription **and** pyannote `speaker-diarization-community-1` — then reports:
+transcription **and** the diarization dispatcher (`label_speakers`) — then
+reports WER vs the clip's captions plus **speaker-count accuracy**
+(`|detected − expected|` as exact-match %, within-1 %, mean abs error). Clips
+are gathered by category with a category-typical expected count
+(2 = podcast/interview, 3 = panel, 4 = roundtable); the expected count is
+approximate, so **within-1** is the headline sanity metric. Run on the Cornell
+cluster, which has **no HF token**, so this exercises the **key-free Resemblyzer
+path** — exactly what a no-API-key user gets (MeetingScribe's premise). Pure
+`parse_urls_file`/`aggregate` helpers are unit-tested.
 
-- **WER** vs the clip's own captions (same Levenshtein-over-words as the batch
-  harness, reusing `verify_youtube` helpers — no duplicated logic), and
-- **speaker-count accuracy**: `|detected − expected|`, summarized as
-  *exact-match %*, *within-1 %*, and *mean absolute error*.
+### Two real bugs surfaced — and fixed
+**1. Every clip collapsed to ONE speaker.** First runs: **8/8** genuinely
+multi-speaker clips (incl. 3-speaker panels) reported a single speaker, while
+WER stayed ~6% — so ASR was fine; diarization was broken. Two root causes,
+both fixed:
 
-Clips are gathered by category with a category-typical expected count
-(2 = podcast/interview, 3 = panel, 4 = roundtable). The expected count is
-approximate, so **within-1** is the headline sanity metric: it catches the two
-real failure modes — diarization **collapsing to 1 speaker** (the "Others" bug
-class) or **exploding** into many phantom speakers. The pure `parse_urls_file`
-and `aggregate` helpers are unit-tested (`tests/test_verify_multispeaker.py`).
+- **Timeline misalignment (latent).** `diarize_segments`/`speaker_embeddings`
+  ran `resemblyzer.preprocess_wav(wav_path)`, which **trims long silences**
+  (webrtcvad) and so *shifts the waveform timeline*. Slicing that trimmed wav by
+  Whisper's segment timestamps (original timeline) extracted the wrong audio per
+  segment. Fixed by reading the **untrimmed** original (`soundfile`), slicing
+  each segment on its own timeline, then preprocessing each clip in isolation.
+- **Miscalibrated merge threshold (the actual collapse cause).** A direct probe
+  (cluster-count vs threshold on real 2/3/4-speaker clips) showed Resemblyzer
+  d-vector inter-speaker cosine distance tops out ~0.45–0.55, so the old default
+  `MEETINGSCRIBE_DIAR_THRESHOLD=0.55` merged **everyone** into one cluster:
+
+  | threshold | c001 (2 spk) | c007 (3 spk) | c009 (4 spk) |
+  |---:|---:|---:|---:|
+  | 0.55 (old) | 1 | 1 | 1 |
+  | 0.50 | 1 | 1 | 1 |
+  | 0.45 | 2 | 2 | 2 |
+  | **0.40 (new)** | **2** | **2** | **2** |
+  | 0.35 | 2 | 3 | 3 |
+
+  Default lowered to **0.40** (`DEFAULT_DIAR_THRESHOLD`) — recovers the common
+  2-speaker case with ~0.10 margin below the 0.50 collapse point (resists
+  over-segmenting a monologue). Two regression tests pin the calibration.
+
+**After the fix** (10-clip key-free run, large-v3, fresh URL set): speaker-count
+**exact 4/10 (40%), within-1 8/10 (80%), mean abs err 0.9** — up from **0/10
+exact** (universal collapse). Clips now resolve 2, 3, and 4 speakers (one
+`exp 4 → det 4` exact). Mean WER 0.19 (median 0.17) on these noisier
+search-result clips.
+
+**Takeaway / honest limits.** The catastrophic universal collapse is gone; the
+key-free path now genuinely separates speakers. It still **under-counts** on
+some clips (similar-sounding voices or one dominant speaker merge) — expected
+for a key-free d-vector approach. Users who accept the gated terms and set a HF
+token get pyannote, which separates speakers more reliably; the key-free default
+is the no-token fallback and is now correct-in-the-common-case rather than broken.
