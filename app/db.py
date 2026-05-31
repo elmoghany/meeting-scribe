@@ -460,6 +460,44 @@ def set_action_done(item_id: int, done: bool) -> None:
         c.execute("UPDATE action_items SET done = ? WHERE id = ?", (int(done), item_id))
 
 
+def add_action_item(meeting_id: str, item: ActionItem) -> int:
+    with cursor() as c:
+        cur = c.execute(
+            "INSERT INTO action_items(meeting_id,text,owner,due,done) VALUES (?,?,?,?,?)",
+            (meeting_id, item.text, item.owner, item.due, int(item.done)))
+        return int(cur.lastrowid)
+
+
+def update_action_item(item_id: int, text: str | None = None, owner: str | None = None,
+                       due: str | None = None) -> str | None:
+    """Edit an action item's fields. Returns the meeting_id, or None if missing."""
+    sets, args = [], []
+    for col, val in (("text", text), ("owner", owner), ("due", due)):
+        if val is not None:
+            sets.append(f"{col} = ?")
+            args.append(val)
+    if not sets:
+        return None
+    with cursor() as c:
+        row = c.execute("SELECT meeting_id FROM action_items WHERE id = ?",
+                        (item_id,)).fetchone()
+        if not row:
+            return None
+        c.execute(f"UPDATE action_items SET {', '.join(sets)} WHERE id = ?",
+                  (*args, item_id))
+    return row["meeting_id"]
+
+
+def delete_action_item(item_id: int) -> str | None:
+    with cursor() as c:
+        row = c.execute("SELECT meeting_id FROM action_items WHERE id = ?",
+                        (item_id,)).fetchone()
+        if not row:
+            return None
+        c.execute("DELETE FROM action_items WHERE id = ?", (item_id,))
+    return row["meeting_id"]
+
+
 def all_action_items(open_only: bool = False, owner: str | None = None,
                      limit: int = 500) -> list[dict]:
     """Action items across every meeting, with meeting context — for the global

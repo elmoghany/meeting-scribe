@@ -80,6 +80,21 @@ def test_summary_and_actions():
     assert db.get_action_items(mid)[0].done is True
 
 
+def test_action_item_add_edit_delete():
+    mid = _mk("m-ai-crud")
+    iid = db.add_action_item(mid, ActionItem(text="ship it", owner="Me", due="Fri"))
+    items = db.get_action_items(mid)
+    assert any(i.id == iid and i.text == "ship it" for i in items)
+    assert db.update_action_item(iid, text="ship the release", owner="Sam") == mid
+    edited = next(i for i in db.get_action_items(mid) if i.id == iid)
+    assert edited.text == "ship the release" and edited.owner == "Sam" and edited.due == "Fri"
+    assert db.update_action_item(999999, text="x") is None
+    assert db.update_action_item(iid) is None
+    assert db.delete_action_item(iid) == mid
+    assert not any(i.id == iid for i in db.get_action_items(mid))
+    assert db.delete_action_item(iid) is None
+
+
 def test_delete_cascades():
     mid = _mk("m-del")
     db.add_segment(mid, Segment(start=0, end=1, text="x", speaker="Me", source="batch"))

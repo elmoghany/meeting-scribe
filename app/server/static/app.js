@@ -222,6 +222,26 @@ $("t-search").addEventListener("input", () => {
   if (first) first.scrollIntoView({ block: "center" });
 });
 
+function editActionText(itemId, txtEl) {
+  const orig = txtEl.textContent;
+  txtEl.contentEditable = "true"; txtEl.focus();
+  const done = async (save) => {
+    txtEl.contentEditable = "false"; txtEl.onkeydown = txtEl.onblur = null;
+    const v = txtEl.textContent.trim();
+    if (save && v && v !== orig) {
+      try { await api(`/api/action/${itemId}`, { method: "PATCH",
+        headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text: v }) });
+        renderAllActions();
+      } catch { txtEl.textContent = orig; }
+    } else txtEl.textContent = orig;
+  };
+  txtEl.onkeydown = (e) => {
+    if (e.key === "Enter") { e.preventDefault(); done(true); }
+    else if (e.key === "Escape") { e.preventDefault(); done(false); }
+  };
+  txtEl.onblur = () => done(true);
+}
+
 async function saveSpeakerNames() {
   const mapping = {};
   $("speakers").querySelectorAll(".spk-in").forEach((i) => {
@@ -453,7 +473,7 @@ async function openMeeting(id) {
     sp.appendChild(btn);
   } else sp.innerHTML = `<p class="muted">No speakers yet.</p>`;
 
-  // action items
+  // action items (with manual add / edit / delete)
   const al = $("actions"); al.innerHTML = "";
   for (const a of d.action_items) {
     const li = document.createElement("li");
@@ -461,12 +481,28 @@ async function openMeeting(id) {
     cb.type = "checkbox"; cb.checked = a.done;
     cb.onchange = async () => { await post(`/api/action/${a.id}?done=${cb.checked}`); renderAllActions(); };
     const meta = [a.owner, a.due].filter(Boolean).join(" · ");
-    li.appendChild(cb);
-    li.insertAdjacentHTML("beforeend",
-      `${escapeHtml(a.text)} ${meta ? `<span class="badge">${escapeHtml(meta)}</span>` : ""}`);
+    const txt = document.createElement("span"); txt.className = "ai-edit"; txt.textContent = a.text;
+    txt.title = "Double-click to edit"; txt.style.cursor = "text";
+    txt.ondblclick = () => editActionText(a.id, txt);
+    const del = document.createElement("span"); del.className = "annot-del"; del.textContent = "✕";
+    del.title = "Delete"; del.style.marginLeft = "6px";
+    del.onclick = async () => { await api(`/api/action/${a.id}`, { method: "DELETE" });
+      openMeeting(currentMeeting); renderAllActions(); };
+    li.appendChild(cb); li.appendChild(txt);
+    if (meta) li.insertAdjacentHTML("beforeend", ` <span class="badge">${escapeHtml(meta)}</span>`);
+    li.appendChild(del);
     al.appendChild(li);
   }
   if (!d.action_items.length) al.innerHTML = `<li class="muted">None detected.</li>`;
+  const addRow = document.createElement("li"); addRow.className = "row";
+  const addIn = document.createElement("input"); addIn.placeholder = "+ add action item";
+  addIn.onkeydown = async (e) => {
+    if (e.key === "Enter" && addIn.value.trim()) {
+      await post(`/api/meetings/${currentMeeting}/action-items`, { text: addIn.value.trim() });
+      openMeeting(currentMeeting); renderAllActions();
+    }
+  };
+  addRow.appendChild(addIn); al.appendChild(addRow);
 
   // analytics (talk time)
   const an = $("analytics"); an.innerHTML = "";

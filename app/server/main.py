@@ -531,6 +531,51 @@ def toggle_action(item_id: int, done: bool = True):
     return {"id": item_id, "done": done}
 
 
+class ActionItemReq(BaseModel):
+    text: str | None = None
+    owner: str | None = None
+    due: str | None = None
+
+
+def _reexport(meeting_id: str | None):
+    if meeting_id:
+        from ..pipeline.process import export_markdown
+        export_markdown(meeting_id)
+
+
+@app.post("/api/meetings/{meeting_id}/action-items")
+def add_action_item(meeting_id: str, req: ActionItemReq):
+    """Manually add an action item the AI missed."""
+    if not db.get_meeting(meeting_id):
+        raise HTTPException(404, "Meeting not found")
+    if not (req.text and req.text.strip()):
+        raise HTTPException(400, "Action item text is required")
+    from ..models import ActionItem
+    item_id = db.add_action_item(meeting_id, ActionItem(
+        text=req.text.strip(), owner=(req.owner or None), due=(req.due or None)))
+    _reexport(meeting_id)
+    return {"id": item_id}
+
+
+@app.patch("/api/action/{item_id}")
+def edit_action_item(item_id: int, req: ActionItemReq):
+    """Edit an action item's text/owner/due."""
+    mid = db.update_action_item(item_id, text=req.text, owner=req.owner, due=req.due)
+    if not mid:
+        raise HTTPException(404, "Action item not found")
+    _reexport(mid)
+    return {"id": item_id, "meeting_id": mid}
+
+
+@app.delete("/api/action/{item_id}")
+def remove_action_item(item_id: int):
+    mid = db.delete_action_item(item_id)
+    if not mid:
+        raise HTTPException(404, "Action item not found")
+    _reexport(mid)
+    return {"deleted": item_id}
+
+
 class SegmentEditReq(BaseModel):
     text: str | None = None
     speaker: str | None = None
