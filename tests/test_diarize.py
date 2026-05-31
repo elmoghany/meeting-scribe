@@ -5,12 +5,41 @@ import pytest
 
 pytest.importorskip("sklearn")
 
-from app.pipeline.diarize import labels_from_embeddings  # noqa: E402
+from app.pipeline.diarize import DEFAULT_DIAR_THRESHOLD, labels_from_embeddings  # noqa: E402
 
 
 def _v(*x):
     a = np.array(x, dtype=float)
     return a / np.linalg.norm(a)
+
+
+def test_default_threshold_is_calibrated():
+    # Verified on real 2/3/4-speaker clips: distinct speakers separate in the
+    # 0.35-0.45 band; >=0.50 collapses everyone into one. The default must stay
+    # in the calibrated window — a regression to the old 0.55 merged 8/8 clips.
+    assert 0.30 < DEFAULT_DIAR_THRESHOLD <= 0.45
+
+
+def test_default_threshold_separates_realistic_speakers_but_055_collapses():
+    # Two speakers whose d-vectors sit at cosine distance ~0.45 (typical for
+    # Resemblyzer), each with three near-identical segment embeddings.
+    base_a = _v(1, 0, 0, 0, 0, 0)
+    base_b = _v(0.55, 0.835, 0, 0, 0, 0)  # cosine distance ~0.45 from base_a
+
+    def spk(base, dim):
+        out = []
+        for k in range(3):
+            v = base.copy()
+            v[dim + k] += 0.02 * (k + 1)  # tiny intra-speaker jitter
+            out.append(v / np.linalg.norm(v))
+        return out
+
+    embeds = spk(base_a, 2) + spk(base_b, 2)  # 3 of A, then 3 of B
+    idx = list(range(6))
+    at_default = labels_from_embeddings(embeds, idx, 6, distance_threshold=DEFAULT_DIAR_THRESHOLD)
+    at_old = labels_from_embeddings(embeds, idx, 6, distance_threshold=0.55)
+    assert len(set(at_default)) == 2, "default threshold must keep two real speakers apart"
+    assert len(set(at_old)) == 1, "0.55 is the broken setting that merged them"
 
 
 def test_two_speakers_alternating():

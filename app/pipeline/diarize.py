@@ -22,6 +22,16 @@ from ..config import get_settings
 from ..models import Segment
 from .assemble import Turn
 
+# Cosine-distance merge threshold for agglomerative clustering of Resemblyzer
+# d-vectors. CALIBRATED, not a guess: on real 2/3/4-speaker YouTube clips the
+# inter-speaker d-vector cosine distance tops out ~0.45-0.55, so the old default
+# of 0.55 merged EVERY clip into a single speaker (verified: 8/8 clips collapsed
+# to 1). Distinct speakers separate cleanly in the 0.35-0.45 band; 0.40 keeps a
+# ~0.10 margin below the 0.50 collapse point, recovering the common 2-speaker
+# case while resisting over-segmentation of a single speaker. Override via
+# MEETINGSCRIBE_DIAR_THRESHOLD. See docs/VERIFICATION.md (multi-speaker).
+DEFAULT_DIAR_THRESHOLD = 0.40
+
 
 # --------------------------------------------------------------------------- #
 # mic energy VAD (no deps) — anchors "Me"
@@ -82,8 +92,8 @@ def diarize_segments(wav_path: str, segments: list[Segment], max_speakers: int =
     from resemblyzer import VoiceEncoder, preprocess_wav
 
     if distance_threshold is None:
-        # cosine-distance merge threshold; ~0.55 separates distinct real speakers.
-        distance_threshold = float(os.getenv("MEETINGSCRIBE_DIAR_THRESHOLD", "0.55"))
+        distance_threshold = float(
+            os.getenv("MEETINGSCRIBE_DIAR_THRESHOLD", str(DEFAULT_DIAR_THRESHOLD)))
 
     # resemblyzer.preprocess_wav() trims long silences (webrtcvad), which SHIFTS
     # the waveform timeline. Slicing that trimmed wav by Whisper's segment
