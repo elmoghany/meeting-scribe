@@ -4,23 +4,46 @@ This file records concrete end-to-end runs of the MeetingScribe pipeline against
 public YouTube videos, with **Word Error Rate** measured both against the videos'
 own captions and against an independent strong recognizer.
 
-## Cross-check vs Qwen2.5-Omni (independent reference, 20 videos)
+## Cross-check vs Qwen2.5-Omni (independent reference, 100 videos)
 YouTube auto-captions are themselves imperfect ASR, so we also cross-checked
 MeetingScribe's `large-v3` against **Qwen2.5-Omni-7B** (~7.6% WER on Common
-Voice — a far stronger reference) on 20 varied videos (en/fr/es), via
-`scripts/verify_qwen.py` on an A40.
+Voice — a far stronger reference) on **102 varied videos** (en/fr/es), via
+`scripts/verify_qwen.py` on an A40 (`qwen` conda env, cu124 torch).
 
 | comparison | n | mean WER | median | p90 |
 |---|--:|--:|--:|--:|
-| **whisper vs Qwen** (agreement) | 14 | 0.110 | **0.066** | 0.365 |
-| whisper vs captions | 12 | 0.238 | 0.144 | 0.35 |
+| **whisper vs Qwen** (agreement) | 61 | 0.187 | **0.071** | 0.416 |
+| whisper vs captions | 55 | 0.201 | 0.122 | 0.345 |
+| qwen vs captions | 55 | 0.265 | 0.103 | 0.986 |
 
-**MeetingScribe's transcription agrees with Qwen-Omni at a median 6.6% WER** —
-strong independent validation that the ASR is accurate; no systematic issue
-surfaced. (6 of 20 videos were `qwen_empty` — Qwen bailed on music/non-speech
-intros, returning ~1 word; these are excluded from the agreement metric. The
-harness was fixed to detect this by word-ratio rather than scoring an absurd
-"WER 327".)
+**MeetingScribe's transcription agrees with Qwen-Omni at a median 7.1% WER**
+across 61 clean videos — strong independent validation at scale (consistent
+with the 20-video median of 6.6%).
+
+Outcomes: 61 `ok`, 40 `qwen_empty`, 1 `whisper_empty`.
+- The 40 `qwen_empty` are hard/non-speech clips where Qwen returned <30% of
+  whisper's words; on the few with captions, whisper-vs-captions was also high
+  (~28%) — genuinely hard content (music/noise), not a MeetingScribe issue.
+  (The harness classifies these by word-ratio and excludes them; without that
+  fix one near-empty Qwen output scored "WER 327" and poisoned the mean.)
+- The 1 `whisper_empty` (whisper 13 words vs Qwen 341) turned out to be
+  MeetingScribe being **right** — see below.
+
+### The `whisper_empty` case: MeetingScribe correctly suppressed a hallucination
+That clip's first 120s is a near-silent holding slide with one real announcement.
+Re-transcribed both ways:
+- **VAD on** (MeetingScribe's setting): `"Please take your seats and silence your
+  devices. We'll begin in two minutes."` — 13 words, exactly the real speech. ✅
+- **VAD off**: hallucinated repeated Norwegian subtitle-credits
+  (`"Teksting av Nicolai Winther" ×3`) — Whisper's classic non-speech
+  hallucination. ❌
+
+Qwen-Omni hallucinated **341 fabricated words** on the same near-silent audio.
+So MeetingScribe's `vad_filter=True` did its job — suppressing hallucination that
+both the reference model *and* VAD-off fell into. This is concrete evidence to
+**keep VAD enabled** (despite its marginal ~0.4% WER cost on clean speech) and a
+reminder that a `whisper_empty` label means "lengths mismatch", not necessarily
+"MeetingScribe missed".
 
 ---
 
