@@ -121,6 +121,20 @@ def test_delete_batch_empty_is_noop():
             "deleted": [], "count": 0}
 
 
+def test_chapters_endpoint():
+    mid = _mk("srv-chapters")
+    db.replace_segments(mid, [
+        Segment(start=i * 60, end=i * 60 + 40,
+                text="budget pricing budget pricing" if i < 6 else "hiring team hiring team",
+                speaker="Me", source="batch") for i in range(12)],
+        source="batch")
+    with TestClient(app) as c:
+        body = c.get(f"/api/meetings/{mid}/chapters").json()
+        assert "chapters" in body and len(body["chapters"]) >= 2
+        assert body["chapters"][0]["start"] == 0.0
+        assert c.get("/api/meetings/nope/chapters").status_code == 404
+
+
 def test_merge_speakers_via_rename_collapses_labels():
     mid = _mk("srv-merge")
     db.replace_segments(mid, [

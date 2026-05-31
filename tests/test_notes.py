@@ -6,6 +6,36 @@ def _seg(text, speaker="Me", start=0.0):
     return Segment(start=start, end=start + 3, text=text, speaker=speaker, source="batch")
 
 
+def test_chapters_split_by_time_and_titled_by_keywords():
+    # ~20 min meeting: budget talk early, hiring talk late.
+    segs = []
+    for i in range(20):
+        segs.append(Segment(start=i * 60, end=i * 60 + 30,
+                            text="budget revenue pricing budget revenue" if i < 10
+                            else "hiring candidate interview hiring candidate",
+                            speaker="Me", source="batch"))
+    chs = notes.chapters(segs, target_sec=300)  # ~4 chapters over 20 min
+    assert 2 <= len(chs) <= 8
+    # ordered by time, non-overlapping-ish, start at the meeting start
+    assert chs[0]["start"] == 0.0
+    assert all(chs[i]["start"] <= chs[i + 1]["start"] for i in range(len(chs) - 1))
+    titles = " ".join(c["title"].lower() for c in chs)
+    assert "budget" in titles or "revenue" in titles      # early topic surfaced
+    assert "hiring" in titles or "candidate" in titles     # late topic surfaced
+
+
+def test_chapters_empty_or_tiny_input():
+    assert notes.chapters([]) == []
+    assert notes.chapters([Segment(start=0, end=2, text="hi", speaker="Me", source="batch")]) == []
+
+
+def test_chapters_clamped_to_segment_count():
+    segs = [Segment(start=i * 600, end=i * 600 + 5, text=f"topic {i} word word",
+                    speaker="Me", source="batch") for i in range(3)]
+    chs = notes.chapters(segs, target_sec=60, max_chapters=8)  # would want many, only 3 segs
+    assert len(chs) <= 3
+
+
 def test_extract_action_items_owner_and_due():
     segs = [
         _seg("I'll send the report by Friday.", speaker="Sam"),

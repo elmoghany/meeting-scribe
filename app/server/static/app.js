@@ -588,6 +588,22 @@ async function openMeeting(id) {
     } else an.innerHTML = `<p class="muted">No data.</p>`;
   } catch { an.innerHTML = ""; }
 
+  // chapters (jump-to-topic) — click to seek the player
+  const ch = $("chapters"); ch.innerHTML = "";
+  try {
+    const { chapters } = await api(`/api/meetings/${id}/chapters`);
+    $("chapters-h").classList.toggle("hidden", !(chapters && chapters.length));
+    for (const c of (chapters || [])) {
+      const mm = String(Math.floor(c.start / 60)).padStart(2, "0");
+      const ss = String(Math.floor(c.start % 60)).padStart(2, "0");
+      const row = document.createElement("div");
+      row.className = "chapter";
+      row.innerHTML = `<span class="ch-ts">${mm}:${ss}</span><span class="ch-title">${escapeHtml(c.title)}</span>`;
+      row.onclick = () => { const p = $("player"); p.currentTime = c.start; p.play(); };
+      ch.appendChild(row);
+    }
+  } catch { ch.innerHTML = ""; $("chapters-h").classList.add("hidden"); }
+
   // annotations (highlights + comments) — fetch before transcript so stars render
   annotations = await api(`/api/meetings/${id}/annotations`).catch(() => []);
   highlightedIds = new Set(annotations.filter((a) => a.kind === "highlight").map((a) => a.segment_id));

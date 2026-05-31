@@ -145,6 +145,11 @@ mark { background: #3a3f10; color: #f7f7c0; }
 .tt-bar { flex: 1; height: 8px; background: #1c2029; border-radius: 999px; overflow: hidden; }
 .tt-bar span { display: block; height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent2)); }
 .tt-val { flex: 0 0 auto; color: var(--muted); font-size: 12px; white-space: nowrap; }
+.chapter { display: flex; gap: 10px; align-items: baseline; padding: 5px 6px; border-radius: 6px;
+  cursor: pointer; border-bottom: 1px solid #1c2029; }
+.chapter:hover { background: #1a1f29; }
+.chapter .ch-ts { flex: 0 0 auto; color: var(--accent); font-size: 12px; font-variant-numeric: tabular-nums; }
+.chapter .ch-title { color: var(--fg); font-size: 13.5px; }
 #export-fmt { width: auto; display: inline-block; padding: 6px 10px; font-size: 12px; margin: 0; }
 
 /* keyboard-shortcut help overlay */

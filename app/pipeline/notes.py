@@ -225,6 +225,42 @@ def keywords(segments: list[Segment], top_n: int = 8) -> list[str]:
     return [p for _, p in scored[:top_n]]
 
 
+def chapters(segments: list[Segment], target_sec: float = 300.0,
+             max_chapters: int = 8, min_chapters: int = 2) -> list[dict]:
+    """Split the meeting into jump-to-topic chapters (key-free, deterministic).
+
+    Sections are time-proportional (≈ one per `target_sec`, clamped to
+    [min, max]), snapped to segment boundaries, each titled by its salient
+    keywords. Approximate — meant for navigation, not exact topic boundaries.
+    Returns ``[{"start", "end", "title"}]`` ordered by time; ``[]`` if there's
+    too little to chapter.
+    """
+    segs = sorted(segments, key=lambda s: s.start)
+    if len(segs) < 2:
+        return []
+    t0, t1 = segs[0].start, segs[-1].end
+    dur = t1 - t0
+    if dur <= 0:
+        return []
+    n = round(dur / target_sec) if target_sec > 0 else min_chapters
+    n = max(min_chapters, min(max_chapters, n, len(segs)))
+    bucket = dur / n
+    groups: list[list[Segment]] = [[] for _ in range(n)]
+    for s in segs:
+        idx = min(n - 1, int((s.start - t0) / bucket))
+        groups[idx].append(s)
+    out: list[dict] = []
+    for g in groups:
+        if not g:
+            continue
+        kw = keywords(g, top_n=2)
+        title = ", ".join(kw) if kw else (g[0].text.strip()[:40] or "…")
+        title = title[:1].upper() + title[1:]
+        out.append({"start": round(g[0].start, 2), "end": round(g[-1].end, 2),
+                    "title": title})
+    return out
+
+
 def extract_action_items(segments: list[Segment]) -> list[ActionItem]:
     """Heuristic action-item detection with owner (speaker) and due-date capture."""
     items: list[ActionItem] = []

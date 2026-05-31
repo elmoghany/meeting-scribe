@@ -393,6 +393,16 @@ def meeting_analytics(meeting_id: str):
     return exporters.talk_time(segs)
 
 
+@app.get("/api/meetings/{meeting_id}/chapters")
+def meeting_chapters(meeting_id: str):
+    """Auto-detected jump-to-topic chapters for the timeline."""
+    if not db.get_meeting(meeting_id):
+        raise HTTPException(404, "Meeting not found")
+    from ..pipeline import notes
+    segs = db.get_segments(meeting_id, source="batch") or db.get_segments(meeting_id)
+    return {"chapters": notes.chapters(segs)}
+
+
 @app.post("/api/meetings/{meeting_id}/title")
 def set_title(meeting_id: str, req: TitleReq):
     if not db.get_meeting(meeting_id):
