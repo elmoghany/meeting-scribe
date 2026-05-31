@@ -57,10 +57,13 @@ def to_txt(segments: list[Segment], with_timestamps: bool = True) -> str:
 
 def to_json(meeting: Meeting | None, summary: Summary | None,
             action_items: list[ActionItem], segments: list[Segment]) -> str:
+    from .notes import chapters as _chapters
     return json.dumps({
         "meeting": meeting.to_dict() if meeting else None,
         "summary": summary.to_dict() if summary else None,
         "action_items": [a.to_dict() for a in action_items],
+        "analytics": talk_time(segments),
+        "chapters": _chapters(segments),
         "transcript": [s.to_dict() for s in sorted(segments, key=lambda x: x.start)],
     }, indent=2)
 

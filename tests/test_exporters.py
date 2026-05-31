@@ -72,6 +72,9 @@ def test_json_roundtrip():
     assert d["summary"]["overview"] == "o"
     assert len(d["transcript"]) == 2
     assert d["action_items"][0]["text"] == "do x"
+    # JSON export is a complete machine-readable record: analytics + chapters too
+    assert d["analytics"]["num_speakers"] == 2          # "Me" + "Speaker 1" in _segs()
+    assert "chapters" in d                               # present (empty for this short clip)
 
 
 def test_ts_rounding_carry():
