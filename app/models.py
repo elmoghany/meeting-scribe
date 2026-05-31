@@ -77,6 +77,7 @@ class Meeting:
     status: str = "recording"  # recording | processing | done | error
     language: str | None = None
     duration_sec: float | None = None
+    template: str | None = None  # summary template: standup/one_on_one/interview/…
 
     def to_dict(self) -> dict:
         return {
@@ -88,4 +89,5 @@ class Meeting:
             "status": self.status,
             "language": self.language,
             "duration_sec": self.duration_sec,
+            "template": self.template,
         }

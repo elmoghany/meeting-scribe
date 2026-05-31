@@ -288,6 +288,34 @@ _NOTES_SYS = (
     '"action_items": [{"text": str, "owner": str|null, "due": str|null}]}'
 )
 
+# Per-meeting-type guidance appended to the LLM system prompt (Otter/Fireflies
+# "templates"). Affects the LLM backends; a no-op for the extractive fallback.
+SUMMARY_TEMPLATES: dict[str, str] = {
+    "general": "",
+    "standup": (
+        " This is a daily standup. For each person, capture what they did, what "
+        "they will do next, and any blockers. Put blockers and next-steps in "
+        "action_items with the owner set to the speaker."),
+    "one_on_one": (
+        " This is a 1:1. Emphasize feedback given, growth/career topics, and "
+        "concerns raised; action_items should capture follow-ups and commitments."),
+    "interview": (
+        " This is a candidate interview. In key_points summarize the candidate's "
+        "strengths and concerns; in decisions capture any hire/no-hire lean and "
+        "next steps."),
+    "retro": (
+        " This is a retrospective. Group key_points into what went well, what "
+        "didn't, and improvements; action_items are the agreed improvements."),
+    "sales": (
+        " This is a sales/customer call. Capture the customer's needs, objections, "
+        "and budget/timeline signals; action_items are the seller's follow-ups."),
+}
+
+
+def system_prompt_for(template: str | None) -> str:
+    """LLM system prompt with optional meeting-type guidance appended."""
+    return _NOTES_SYS + SUMMARY_TEMPLATES.get((template or "general"), "")
+
 
 def _llm_prompt(transcript: str) -> str:
     return f"Transcript:\n{transcript}\n\nReturn the JSON now."
@@ -341,10 +369,12 @@ def fts_query_from_question(question: str) -> str:
 class ExtractiveNotes:
     backend = "extractive"
 
-    def summarize(self, segments: list[Segment]) -> tuple[Summary, list[ActionItem]]:
+    def summarize(self, segments: list[Segment], template: str | None = None
+                  ) -> tuple[Summary, list[ActionItem]]:
+        # template is a no-op for the extractive backend (frequency-based, can't
+        # restructure semantically); it shapes the LLM backends below.
         # Summarize over plain transcript text — passing the speaker-labeled
-        # form ("Speaker 1: …") would let labels leak into the chosen sentences
-        # ("Speaker 1: Yeah." would score and surface as a key point).
+        # form ("Speaker 1: …") would let labels leak into the chosen sentences.
         plain = " ".join(s.text.strip() for s in segments if s.text.strip())
         return extractive_summary(plain), extract_action_items(segments)
 
@@ -380,8 +410,9 @@ class LlamaCppNotes:
         )
         return out["choices"][0]["message"]["content"]
 
-    def summarize(self, segments: list[Segment]) -> tuple[Summary, list[ActionItem]]:
-        raw = self._complete(_NOTES_SYS, _llm_prompt(to_text(segments)))
+    def summarize(self, segments: list[Segment], template: str | None = None
+                  ) -> tuple[Summary, list[ActionItem]]:
+        raw = self._complete(system_prompt_for(template), _llm_prompt(to_text(segments)))
         return _parse_llm_json(raw, segments)
 
     def chat(self, question: str, segments: list[Segment], history=None) -> str:
@@ -416,8 +447,9 @@ class TransformersNotes:
                                        do_sample=False)
         return self._tok.decode(out[0][inputs.shape[1]:], skip_special_tokens=True)
 
-    def summarize(self, segments: list[Segment]) -> tuple[Summary, list[ActionItem]]:
-        raw = self._complete(_NOTES_SYS, _llm_prompt(to_text(segments)))
+    def summarize(self, segments: list[Segment], template: str | None = None
+                  ) -> tuple[Summary, list[ActionItem]]:
+        raw = self._complete(system_prompt_for(template), _llm_prompt(to_text(segments)))
         return _parse_llm_json(raw, segments)
 
     def chat(self, question: str, segments: list[Segment], history=None) -> str:

@@ -315,6 +315,8 @@ async function openMeeting(id) {
   const mins = (d.meeting.duration_sec || 0) / 60;
   $("detail-meta").textContent =
     `${d.meeting.platform} · ${d.meeting.status} · ${mins.toFixed(0)} min · ${d.meeting.language || ""}`;
+  await loadTemplates();
+  if (d.meeting.template) $("tmpl-sel").value = d.meeting.template;
 
   // tags
   const tg = $("tags"); tg.innerHTML = "";
@@ -455,10 +457,17 @@ $("btn-free-audio").onclick = async () => {
   const r = await post(`/api/meetings/${currentMeeting}/delete-audio`);
   alert(`Freed ${r.freed_mb} MB (${r.removed.length} file(s)).`);
 };
+async function loadTemplates() {
+  if ($("tmpl-sel").options.length) return;  // once
+  const t = await api("/api/templates").catch(() => ({ templates: ["general"] }));
+  $("tmpl-sel").innerHTML = t.templates
+    .map((x) => `<option value="${x}">${x.replace(/_/g, " ")}</option>`).join("");
+}
 $("btn-regen").onclick = async () => {
   const b = $("btn-regen"); b.textContent = "Regenerating…"; b.disabled = true;
+  const tmpl = $("tmpl-sel").value || "general";
   try {
-    await post(`/api/meetings/${currentMeeting}/regenerate-notes`);
+    await post(`/api/meetings/${currentMeeting}/regenerate-notes?template=${encodeURIComponent(tmpl)}`);
     await openMeeting(currentMeeting); renderAllActions();
   } finally { b.textContent = "Regen notes"; b.disabled = false; }
 };
@@ -606,6 +615,7 @@ $("vocab-save").onclick = async () => {
 
 $("player").addEventListener("timeupdate", highlightPlaying);
 loadVocab();
+loadTemplates();
 connectWS();
 refreshMeetings();
 renderAllActions();

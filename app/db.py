@@ -23,7 +23,8 @@ CREATE TABLE IF NOT EXISTS meetings (
     ended_at      REAL,
     status        TEXT NOT NULL DEFAULT 'recording',
     language      TEXT,
-    duration_sec  REAL
+    duration_sec  REAL,
+    template      TEXT
 );
 
 CREATE TABLE IF NOT EXISTS segments (
@@ -130,6 +131,9 @@ def _connect() -> sqlite3.Connection:
         cols = {r[1] for r in _conn.execute("PRAGMA table_info(segments)").fetchall()}
         if "confidence" not in cols:
             _conn.execute("ALTER TABLE segments ADD COLUMN confidence REAL")
+        mcols = {r[1] for r in _conn.execute("PRAGMA table_info(meetings)").fetchall()}
+        if "template" not in mcols:
+            _conn.execute("ALTER TABLE meetings ADD COLUMN template TEXT")
         _conn.commit()
     return _conn
 
@@ -160,10 +164,11 @@ def cursor() -> Iterator[sqlite3.Cursor]:
 def create_meeting(m: Meeting) -> None:
     with cursor() as c:
         c.execute(
-            "INSERT INTO meetings(id,title,platform,started_at,ended_at,status,language,duration_sec)"
-            " VALUES (?,?,?,?,?,?,?,?)",
+            "INSERT INTO meetings(id,title,platform,started_at,ended_at,status,"
+            "language,duration_sec,template)"
+            " VALUES (?,?,?,?,?,?,?,?,?)",
             (m.id, m.title, m.platform, m.started_at, m.ended_at, m.status,
-             m.language, m.duration_sec),
+             m.language, m.duration_sec, m.template),
         )
 
 
@@ -318,10 +323,12 @@ def delete_meeting(meeting_id: str) -> None:
 
 
 def _row_to_meeting(r: sqlite3.Row) -> Meeting:
+    keys = r.keys()
     return Meeting(
         id=r["id"], title=r["title"], platform=r["platform"],
         started_at=r["started_at"], ended_at=r["ended_at"], status=r["status"],
         language=r["language"], duration_sec=r["duration_sec"],
+        template=(r["template"] if "template" in keys else None),
     )
 
 

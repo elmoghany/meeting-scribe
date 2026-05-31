@@ -469,22 +469,37 @@ def reprocess(meeting_id: str):
     return {"meeting_id": meeting_id, "status": "processing"}
 
 
+@app.get("/api/templates")
+def list_templates():
+    """Available summary templates (meeting types)."""
+    from ..pipeline.notes import SUMMARY_TEMPLATES
+    return {"templates": list(SUMMARY_TEMPLATES.keys())}
+
+
 @app.post("/api/meetings/{meeting_id}/regenerate-notes")
-def regenerate_notes(meeting_id: str):
+def regenerate_notes(meeting_id: str, template: str | None = None):
     """Re-run summary + action-item extraction on the existing transcript
-    (no re-transcription). Handy after renaming speakers or changing the LLM."""
+    (no re-transcription). Optional `template` (standup/one_on_one/…) tailors
+    the LLM summary and is remembered on the meeting."""
+    if not db.get_meeting(meeting_id):
+        raise HTTPException(404, "Meeting not found")
     segs = db.get_segments(meeting_id, source="batch") or db.get_segments(meeting_id)
     if not segs:
         raise HTTPException(404, "No transcript to summarize yet")
-    from ..pipeline.notes import get_notes_backend
+    from ..pipeline.notes import SUMMARY_TEMPLATES, get_notes_backend
     from ..pipeline.process import export_markdown
+    if template is not None and template not in SUMMARY_TEMPLATES:
+        raise HTTPException(400, f"Unknown template '{template}'")
+    if template is not None:
+        db.update_meeting(meeting_id, template=template)
+    tmpl = template or db.get_meeting(meeting_id).template
     backend = get_notes_backend()
-    summary, items = backend.summarize(segs)
+    summary, items = backend.summarize(segs, template=tmpl)
     db.save_summary(meeting_id, summary)
     db.save_action_items(meeting_id, items)
     export_markdown(meeting_id)
     return {"key_points": len(summary.key_points), "action_items": len(items),
-            "backend": backend.backend}
+            "backend": backend.backend, "template": tmpl}
 
 
 @app.post("/api/action/{item_id}")
