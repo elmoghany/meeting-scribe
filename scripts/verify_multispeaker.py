@@ -55,29 +55,39 @@ def parse_urls_file(text: str) -> list[tuple[str, int | None]]:
     return out
 
 
-def detect_speakers(audio_path: str) -> list[str] | None:
-    """Sorted distinct pyannote speaker labels for a clip, or None if it fails.
+def detect_speakers(audio_path: str, segments) -> list[str] | None:
+    """Sorted distinct speaker labels for a clip via the app's diarization
+    dispatcher, or None if it fails.
+
+    Uses `label_speakers` — the SAME path the live pipeline uses — so it honors
+    the configured backend AND its key-free Resemblyzer fallback. That makes
+    this verification representative of what a no-API-key user actually gets
+    (MeetingScribe's whole premise), instead of a token-gated pyannote-only path.
 
     Returning the labels (not just a count) makes the two failure modes legible
-    in the results — collapse-to-one (['SPEAKER_00']) vs phantom explosion
-    (['SPEAKER_00'..'SPEAKER_09']) — without re-running.
+    in the results — collapse-to-one (['Speaker 1']) vs phantom explosion
+    (['Speaker 1'..'Speaker 9']) — without re-running.
     """
     try:
-        from app.pipeline.diarize import diarize_pyannote
-        turns = diarize_pyannote(audio_path)
-        return sorted({t.speaker for t in turns})
+        from app.pipeline.diarize import label_speakers
+        labeled = label_speakers(audio_path, segments)
+        return sorted({s.speaker for s in labeled})
     except Exception as e:  # noqa: BLE001
         print(f"[ms] diarize failed: {type(e).__name__}: {e}", file=sys.stderr, flush=True)
         return None
 
 
 def run_one(model, url: str, expected: int | None, work: Path, seconds: int) -> dict:
+    from app.models import Segment
     audio, caps = _download(url, work, seconds)
     if not audio:
         return {"url": url, "expected_speakers": expected, "status": "download_failed"}
     segs, info = model.transcribe(str(audio), beam_size=5, vad_filter=True)
+    segs = list(segs)
     hyp = " ".join(s.text.strip() for s in segs)
-    labels = detect_speakers(str(audio))
+    app_segs = [Segment(start=float(s.start), end=float(s.end), text=s.text,
+                        speaker="?", source="batch") for s in segs]
+    labels = detect_speakers(str(audio), app_segs)
     res = {"url": url, "expected_speakers": expected,
            "detected_speakers": len(labels) if labels is not None else None,
            "detected_labels": labels,
