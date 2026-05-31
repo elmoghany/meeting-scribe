@@ -162,12 +162,15 @@ def main(argv: list[str] | None = None) -> int:
     clips = parse_urls_file(Path(a.urls).read_text(encoding="utf-8"))
     print(f"[ms] {len(clips)} clips, {len(done)} already done", flush=True)
 
-    from faster_whisper import WhisperModel
     from app.device import detect
+    from app.pipeline.asr import _load
     dev, comp = detect()
-    print(f"[ms] loading {a.model} on {dev}/{comp} ...", flush=True)
-    model = WhisperModel(a.model, device=dev, compute_type=comp,
-                         download_root=str(s.models_dir / "whisper"))
+    # _load mirrors the app: tries the detected GPU compute type, then falls back
+    # to CPU int8 if GPU init fails (e.g. CTranslate2 rejecting float16 on an old
+    # Maxwell card like a TITAN X) — so the batch never crashes on whatever GPU
+    # SLURM happens to assign.
+    print(f"[ms] loading {a.model} on {dev}/{comp} (CPU fallback armed) ...", flush=True)
+    model = _load(a.model, dev, comp)
 
     results = list(done.values())
     for i, (url, exp) in enumerate(clips, 1):
