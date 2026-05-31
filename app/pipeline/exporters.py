@@ -172,6 +172,14 @@ def to_html(meeting: Meeting | None, summary: Summary | None,
                 f"<span class='muted'>— {sp['time_pct']}% · {int(sp['seconds'])}s · "
                 f"{sp['words']} words</span></li>")
         parts.append("</ul>")
+    from .notes import chapters as _chapters
+    chs = _chapters(segments)
+    if chs:
+        parts.append("<h2>Chapters</h2><ul>")
+        for c in chs:
+            mm, ss = divmod(int(c["start"]), 60)
+            parts.append(f"<li><span class='muted'>{mm:02d}:{ss:02d}</span> {_esc(c['title'])}</li>")
+        parts.append("</ul>")
     parts += ["<h2>Transcript</h2>"] + rows + ["</body></html>"]
     return "".join(parts)
 

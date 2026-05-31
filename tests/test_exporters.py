@@ -50,6 +50,19 @@ def test_html_speakers_section_skipped_for_single_speaker():
     assert "<h2>Speakers</h2>" not in html  # nothing to compare with one speaker
 
 
+def test_html_includes_chapters_for_long_meeting():
+    from app.models import Segment as Seg
+    segs = [Seg(start=i * 60, end=i * 60 + 40,
+                text="budget pricing budget pricing" if i < 6 else "hiring team hiring team",
+                speaker="Me", source="batch") for i in range(12)]   # 12 min
+    html = exporters.to_html(None, None, [], segs)
+    assert "<h2>Chapters</h2>" in html
+    # short meetings get no chapters section
+    short = [Seg(start=0, end=3, text="hi there", speaker="Me", source="batch"),
+             Seg(start=3, end=6, text="ok bye", speaker="Me", source="batch")]
+    assert "<h2>Chapters</h2>" not in exporters.to_html(None, None, [], short)
+
+
 def test_json_roundtrip():
     import json
     m = Meeting(id="x", title="T", platform="zoom", started_at=1.0)

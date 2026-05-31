@@ -240,7 +240,7 @@ def chapters(segments: list[Segment], target_sec: float = 300.0,
         return []
     t0, t1 = segs[0].start, segs[-1].end
     dur = t1 - t0
-    if dur <= 0:
+    if dur < 120:          # too short to be worth chaptering (navigation aid only)
         return []
     n = round(dur / target_sec) if target_sec > 0 else min_chapters
     n = max(min_chapters, min(max_chapters, n, len(segs)))

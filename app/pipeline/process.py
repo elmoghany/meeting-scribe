@@ -210,11 +210,19 @@ def export_markdown(meeting_id: str) -> Path:
     # from the same segments so the exported notes match what the dashboard shows.
     if segments:
         from . import exporters
-        from .notes import keywords, sentiment
+        from .notes import chapters, keywords, sentiment
 
         topics = keywords(segments)
         if topics:
             lines += ["## Topics", "", " · ".join(topics), ""]
+
+        chs = chapters(segments)
+        if chs:
+            lines += ["## Chapters", ""]
+            for c in chs:
+                mm, ss = divmod(int(c["start"]), 60)
+                lines.append(f"- `{mm:02d}:{ss:02d}` {c['title']}")
+            lines.append("")
 
         sent = sentiment(segments)
         if sent.get("positive") or sent.get("negative"):
