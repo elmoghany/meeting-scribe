@@ -328,6 +328,43 @@ def meeting_export(meeting_id: str, fmt: str = "txt"):
         "Content-Disposition": f'attachment; filename="{meeting_id}.{fmt}"'})
 
 
+@app.get("/api/meetings/{meeting_id}/clip")
+def meeting_clip(meeting_id: str, start: float, end: float):
+    """Download a WAV clip [start,end] of the meeting — share a single highlight."""
+    s = get_settings()
+    rec = s.recordings_dir / meeting_id
+    from ..pipeline.audiomix import ensure_meeting_wav, extract_clip
+    src = ensure_meeting_wav(rec)
+    if not src:
+        raise HTTPException(404, "No audio for this meeting")
+    out = rec / f"clip_{int(start)}_{int(end)}.wav"
+    if not extract_clip(src, start, end, out, pad=0.3):
+        raise HTTPException(400, "Empty or invalid clip range")
+    return FileResponse(str(out), media_type="audio/wav", headers={
+        "Content-Disposition": f'attachment; filename="{meeting_id}_clip.wav"'})
+
+
+@app.get("/api/meetings/{meeting_id}/highlight-reel")
+def meeting_highlight_reel(meeting_id: str):
+    """Concatenate all highlighted (starred) segments into one shareable reel."""
+    s = get_settings()
+    segs = {seg.id: seg for seg in
+            (db.get_segments(meeting_id, source="batch") or db.get_segments(meeting_id))}
+    spans = []
+    for a in db.list_annotations(meeting_id):
+        if a["kind"] == "highlight" and a["segment_id"] in segs:
+            seg = segs[a["segment_id"]]
+            spans.append((seg.start, seg.end))
+    if not spans:
+        raise HTTPException(404, "No highlighted lines to export")
+    from ..pipeline.audiomix import export_highlight_reel
+    out = s.recordings_dir / meeting_id / "highlight_reel.wav"
+    if not export_highlight_reel(s.recordings_dir / meeting_id, spans, out):
+        raise HTTPException(404, "No audio for this meeting")
+    return FileResponse(str(out), media_type="audio/wav", headers={
+        "Content-Disposition": f'attachment; filename="{meeting_id}_highlights.wav"'})
+
+
 @app.get("/api/meetings/{meeting_id}/audio")
 def meeting_audio(meeting_id: str):
     """Stream the mixed meeting audio (mic+system) for the synced player.

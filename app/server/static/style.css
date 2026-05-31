@@ -87,7 +87,9 @@ ul { list-style: none; padding: 0; margin: 0; }
 .seg { position: relative; }
 .seg.hi { background: rgba(251, 191, 36, .10); box-shadow: inset 3px 0 0 var(--warn); }
 .seg .star { position: absolute; right: 6px; top: 4px; color: var(--warn); cursor: pointer; font-size: 14px; opacity: 0; }
-.seg:hover .star, .seg.hi .star { opacity: 1; }
+.seg .clip { position: absolute; right: 24px; top: 4px; color: var(--muted); cursor: pointer; font-size: 12px; opacity: 0; }
+.seg:hover .star, .seg.hi .star, .seg:hover .clip { opacity: 1; }
+.seg .clip:hover { color: var(--accent); }
 .annot { display: flex; justify-content: space-between; gap: 8px; align-items: flex-start;
   padding: 6px 0; border-bottom: 1px solid #1c2029; font-size: 13.5px; }
 .annot-del { color: var(--muted); cursor: pointer; flex: 0 0 auto; }

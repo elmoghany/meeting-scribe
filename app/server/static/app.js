@@ -85,6 +85,11 @@ function segEl(s, withStar) {
     star.title = "Highlight this line";
     star.onclick = (e) => { e.stopPropagation(); toggleHighlight(s.id, div, star); };
     div.appendChild(star);
+    const clip = document.createElement("span");
+    clip.className = "clip"; clip.textContent = "⬇"; clip.title = "Download this clip";
+    clip.onclick = (e) => { e.stopPropagation();
+      window.open(`/api/meetings/${currentMeeting}/clip?start=${s.start}&end=${s.end}`, "_blank"); };
+    div.appendChild(clip);
   }
   div.onclick = () => seekTo(s.start);
   return div;
@@ -456,6 +461,10 @@ $("btn-regen").onclick = async () => {
     await post(`/api/meetings/${currentMeeting}/regenerate-notes`);
     await openMeeting(currentMeeting); renderAllActions();
   } finally { b.textContent = "Regen notes"; b.disabled = false; }
+};
+$("btn-reel").onclick = () => {
+  if (!highlightedIds.size) { alert("Star some transcript lines first to build a reel."); return; }
+  window.open(`/api/meetings/${currentMeeting}/highlight-reel`, "_blank");
 };
 $("btn-reprocess").onclick = () => post(`/api/meetings/${currentMeeting}/reprocess`);
 $("btn-delete").onclick = async () => {
