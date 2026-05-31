@@ -27,18 +27,31 @@ fully-offline use: `python -m scripts.download_models`.
 Open a meeting from the list to:
 - **Play the audio** — click any transcript line to jump there; the playing line
   highlights. (`space` plays/pauses.)
-- **Rename speakers** — turn "Speaker 1" into real names; it updates everywhere.
-- **Tick off action items**, or see them all in the left-panel **task tracker**
-  (toggle open-only, export **CSV**).
-- **Star** key lines and add **comments**.
-- **Tag** the meeting and filter your history by tag.
-- **Ask the meeting** — "What did we decide about the budget?"
+- **Jump by chapter** — the **Chapters** list auto-splits the meeting into
+  keyword-titled sections; click one to seek there.
+- **Rename _or merge_ speakers** — turn "Speaker 1" into real names, or **merge**
+  two labels when diarization over-splits one person. Updates everywhere.
+- **Fix mistakes inline** — double-click a transcript line to correct a
+  mis-transcription; edit the AI summary / key points / decisions in place.
+- **Tick off action items** (add your own too), or see them all in the
+  left-panel **task tracker** (toggle open-only, export **CSV**).
+- **Star** key lines and add **comments**; export a starred line as an audio
+  **clip**, or all starred lines as one **highlight reel**.
+- **Tag** the meeting and filter your history by tag; filter the list by title.
+- **Ask the meeting** — "What did we decide about the budget?" — or **ask across
+  all meetings** for cross-meeting answers with citations.
+- **Re-summarize with a template** — standup, 1:1, interview, retro, sales
+  (auto-suggested from the transcript).
+- **Custom vocabulary** — teach it names/jargon so transcription spells them right.
 - **Find in transcript** with the search box (`/` focuses global search).
-- See **topics** and **talk-time** analytics.
+- See **topics**, the **dominant speaker**, and **talk-time** analytics.
 
 ## 4. Share / export
 - **Copy** — full notes to clipboard for email/Slack.
-- **Export** menu — Markdown, plain text, **SRT/VTT** subtitles, or JSON.
+- **Export** menu — Markdown, plain text, **SRT/VTT** subtitles, a self-contained
+  **web page (.html)**, or JSON. Notes, chapters, talk-time, and the transcript
+  are all included.
+- **Manage** — multi-select meetings in the sidebar to **bulk delete**.
 - **Webhook** — set `MEETINGSCRIBE_WEBHOOK_URL` to auto-post notes to
   Slack/Discord/Notion/Zapier when a meeting finishes.
 
