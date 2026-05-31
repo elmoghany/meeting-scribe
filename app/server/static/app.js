@@ -87,6 +87,7 @@ function segEl(s, withStar) {
     star.className = "star";
     star.textContent = highlightedIds.has(s.id) ? "★" : "☆";
     star.title = "Highlight this line";
+    star.setAttribute("role", "button"); star.setAttribute("aria-label", "Highlight line");
     star.onclick = (e) => { e.stopPropagation(); toggleHighlight(s.id, div, star); };
     div.appendChild(star);
     const clip = document.createElement("span");
@@ -650,11 +651,24 @@ $("theme-btn").onclick = () =>
   applyTheme(document.documentElement.dataset.theme === "light" ? "dark" : "light");
 applyTheme((() => { try { return localStorage.getItem("ms-theme"); } catch { return null; } })() || "dark");
 
-// keyboard shortcuts: "/" focus search · space play/pause · r start/stop
+// help overlay (? toggles, Esc / click / button closes)
+function toggleHelp(show) {
+  const o = $("help-overlay");
+  o.classList.toggle("hidden", show === false ? true : (show === true ? false : !o.classList.contains("hidden")));
+}
+$("help-btn").onclick = () => toggleHelp(true);
+$("help-close").onclick = () => toggleHelp(false);
+$("help-overlay").onclick = (e) => { if (e.target.id === "help-overlay") toggleHelp(false); };
+
+// keyboard shortcuts: "?" help · "/" focus search · space play/pause · r start/stop
 document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && !$("help-overlay").classList.contains("hidden")) {
+    toggleHelp(false); return;
+  }
   const el = document.activeElement;
   if (el && /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName)) return;
-  if (e.key === "/") { e.preventDefault(); $("search").focus(); }
+  if (e.key === "?") { e.preventDefault(); toggleHelp(); }
+  else if (e.key === "/") { e.preventDefault(); $("search").focus(); }
   else if (e.key === " " && currentMeeting && $("player").getAttribute("src")) {
     e.preventDefault();
     const p = $("player"); p.paused ? p.play() : p.pause();

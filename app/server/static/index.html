@@ -10,7 +10,8 @@
   <header>
     <h1>🎙️ MeetingScribe</h1>
     <span class="tag">local · key-free · MIT</span>
-    <button id="theme-btn" class="theme-btn" title="Toggle light/dark">🌓</button>
+    <button id="theme-btn" class="theme-btn" title="Toggle light/dark" aria-label="Toggle light or dark theme">🌓</button>
+    <button id="help-btn" class="theme-btn" title="Keyboard shortcuts (?)" aria-label="Keyboard shortcuts">⌨</button>
     <span id="conn" class="dot" title="live connection"></span>
   </header>
 
@@ -145,6 +146,21 @@
       </div>
     </section>
   </main>
+
+  <div id="help-overlay" class="hidden" role="dialog" aria-modal="true" aria-label="Keyboard shortcuts">
+    <div class="help-box">
+      <h2>Keyboard shortcuts</h2>
+      <table>
+        <tr><td><kbd>?</kbd></td><td>Show / hide this help</td></tr>
+        <tr><td><kbd>/</kbd></td><td>Focus search</td></tr>
+        <tr><td><kbd>Space</kbd></td><td>Play / pause audio (when a meeting is open)</td></tr>
+        <tr><td><kbd>r</kbd></td><td>Start / stop recording</td></tr>
+        <tr><td><kbd>Esc</kbd></td><td>Close this help / cancel an edit</td></tr>
+      </table>
+      <p class="muted">Double-click a transcript line to edit it; ✎ on the summary to edit notes.</p>
+      <button id="help-close" class="ghost">Close</button>
+    </div>
+  </div>
 
   <script src="/static/app.js"></script>
 </body>

@@ -139,3 +139,16 @@ mark { background: #3a3f10; color: #f7f7c0; }
 .tt-bar span { display: block; height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent2)); }
 .tt-val { flex: 0 0 auto; color: var(--muted); font-size: 12px; white-space: nowrap; }
 #export-fmt { width: auto; display: inline-block; padding: 6px 10px; font-size: 12px; margin: 0; }
+
+/* keyboard-shortcut help overlay */
+#help-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.55);
+  display: flex; align-items: center; justify-content: center; z-index: 50; }
+#help-overlay.hidden { display: none; }
+.help-box { background: var(--card); border: 1px solid var(--line); border-radius: 14px;
+  padding: 22px 26px; max-width: 440px; width: 90%; }
+.help-box h2 { margin: 0 0 14px; font-size: 16px; }
+.help-box table { width: 100%; border-collapse: collapse; margin-bottom: 12px; }
+.help-box td { padding: 6px 4px; border-bottom: 1px solid var(--line); font-size: 14px; }
+.help-box td:first-child { width: 92px; }
+.help-box kbd { background: #0f1218; border: 1px solid var(--line); border-radius: 5px;
+  padding: 2px 7px; font: 12px ui-monospace, monospace; }
