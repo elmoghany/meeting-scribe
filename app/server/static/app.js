@@ -16,6 +16,7 @@ let annotations = [];
 let activeTagFilter = null;
 let selectMode = false;
 let selectedIds = new Set();
+let mlFilter = "";
 
 function chip(label, active, onclick) {
   const s = document.createElement("span");
@@ -384,7 +385,12 @@ async function refreshMeetings() {
            () => { activeTagFilter = activeTagFilter === t.tag ? null : t.tag; refreshMeetings(); })));
   }
   const q = activeTagFilter ? "?tag=" + encodeURIComponent(activeTagFilter) : "";
-  const list = await api("/api/meetings" + q);
+  const all = await api("/api/meetings" + q);
+  const needle = mlFilter.trim().toLowerCase();
+  const list = needle
+    ? all.filter((m) => (m.title || "").toLowerCase().includes(needle))
+    : all;
+  $("ml-empty").classList.toggle("hidden", !(needle && list.length === 0));
   const ul = $("meeting-list"); ul.innerHTML = "";
   for (const m of list) {
     const li = document.createElement("li");
@@ -752,6 +758,10 @@ $("vocab-save").onclick = async () => {
   setTimeout(() => { el.textContent = "· save"; }, 1200);
 };
 
+$("ml-filter").addEventListener("input", (e) => {
+  mlFilter = e.target.value;
+  refreshMeetings();
+});
 $("ml-select").addEventListener("click", () => {
   selectMode = !selectMode;
   selectedIds.clear();
