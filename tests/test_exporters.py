@@ -28,6 +28,19 @@ def test_txt_format():
     assert "[00:03] Speaker 1: Let's begin." in txt
 
 
+def test_html_self_contained():
+    m = Meeting(id="x", title="Q3 <Planning>", platform="zoom", started_at=1.0,
+                duration_sec=120.0)
+    html = exporters.to_html(m, Summary(overview="we shipped v2", key_points=["a & b"]),
+                             [ActionItem(text="email <vendor>", owner="Sam", due="Mon")],
+                             _segs())
+    assert html.startswith("<!doctype html>") and html.rstrip().endswith("</html>")
+    assert "<style>" in html and "http://" not in html and "https://" not in html  # self-contained
+    assert "Q3 &lt;Planning&gt;" in html        # title escaped
+    assert "email &lt;vendor&gt;" in html        # action item escaped
+    assert "we shipped v2" in html and "Me" in html and "Hello everyone." in html
+
+
 def test_json_roundtrip():
     import json
     m = Meeting(id="x", title="T", platform="zoom", started_at=1.0)

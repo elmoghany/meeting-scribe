@@ -113,6 +113,60 @@ def talk_time(segments: list[Segment]) -> dict:
     }
 
 
+def _esc(s: str) -> str:
+    return (s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;"))
+
+
+def to_html(meeting: Meeting | None, summary: Summary | None,
+            action_items: list[ActionItem], segments: list[Segment]) -> str:
+    """A single self-contained HTML file (inline CSS, no external assets) with
+    the notes + speaker-labeled transcript — openable anywhere, shareable."""
+    title = meeting.title if meeting else "Meeting notes"
+    rows = []
+    for s in sorted(segments, key=lambda x: x.start):
+        mm, ss = divmod(int(s.start), 60)
+        rows.append(
+            f'<div class="seg"><span class="ts">{mm:02d}:{ss:02d}</span>'
+            f'<span class="spk">{_esc(s.speaker)}</span>{_esc(s.text.strip())}</div>')
+    parts = [
+        "<!doctype html><html><head><meta charset='utf-8'>",
+        f"<title>{_esc(title)}</title>",
+        "<style>body{font:15px/1.6 -apple-system,Segoe UI,Roboto,sans-serif;"
+        "max-width:780px;margin:40px auto;padding:0 18px;color:#1a1e27}"
+        "h1{font-size:24px}h2{font-size:16px;margin-top:28px;color:#444}"
+        ".seg{padding:4px 0;border-bottom:1px solid #eee}"
+        ".ts{color:#999;font-size:12px;margin-right:8px}"
+        ".spk{font-weight:600;color:#2563eb;margin-right:6px}"
+        ".muted{color:#888}li{margin:3px 0}</style></head><body>",
+        f"<h1>{_esc(title)}</h1>",
+    ]
+    if meeting:
+        import time as _t
+        when = _t.strftime("%Y-%m-%d %H:%M", _t.localtime(meeting.started_at))
+        mins = (meeting.duration_sec or 0) / 60
+        parts.append(f"<p class='muted'>{_esc(meeting.platform.title())} · {when} · "
+                     f"{mins:.0f} min</p>")
+    if summary and summary.overview:
+        parts += ["<h2>Summary</h2>", f"<p>{_esc(summary.overview)}</p>"]
+    if summary and summary.key_points:
+        parts += ["<h2>Key points</h2><ul>"] + \
+                 [f"<li>{_esc(p)}</li>" for p in summary.key_points] + ["</ul>"]
+    if summary and summary.decisions:
+        parts += ["<h2>Decisions</h2><ul>"] + \
+                 [f"<li>{_esc(d)}</li>" for d in summary.decisions] + ["</ul>"]
+    if action_items:
+        parts.append("<h2>Action items</h2><ul>")
+        for a in action_items:
+            meta = " · ".join(x for x in [a.owner, a.due] if x)
+            box = "☑" if a.done else "☐"
+            parts.append(f"<li>{box} {_esc(a.text)}"
+                         + (f" <span class='muted'>({_esc(meta)})</span>" if meta else "")
+                         + "</li>")
+        parts.append("</ul>")
+    parts += ["<h2>Transcript</h2>"] + rows + ["</body></html>"]
+    return "".join(parts)
+
+
 EXPORTERS = {
     "srt": ("text/plain", to_srt),
     "vtt": ("text/vtt", to_vtt),

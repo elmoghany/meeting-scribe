@@ -321,6 +321,10 @@ def meeting_export(meeting_id: str, fmt: str = "txt"):
             body = exporters.to_json(db.get_meeting(meeting_id), db.get_summary(meeting_id),
                                      db.get_action_items(meeting_id), segs)
             media = "application/json"
+        elif fmt == "html":
+            body = exporters.to_html(db.get_meeting(meeting_id), db.get_summary(meeting_id),
+                                     db.get_action_items(meeting_id), segs)
+            media = "text/html"
         elif fmt in exporters.EXPORTERS:
             media, fn = exporters.EXPORTERS[fmt]
             body = fn(segs)
