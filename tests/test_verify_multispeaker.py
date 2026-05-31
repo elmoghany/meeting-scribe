@@ -40,3 +40,21 @@ def test_aggregate_speaker_count_accuracy():
 def test_aggregate_empty_is_safe():
     a = aggregate([])
     assert a["n_total"] == 0 and a["wer_mean"] is None and a["spk_exact_pct"] is None
+
+
+def test_summary_shows_detected_labels(tmp_path):
+    from scripts.verify_multispeaker import write_summary
+    results = [
+        {"status": "ok", "url": "https://youtu.be/panelXYZ", "expected_speakers": 3,
+         "detected_speakers": 1, "detected_labels": ["SPEAKER_00"], "wer": 0.12},
+        {"status": "ok", "url": "https://youtu.be/podAB", "expected_speakers": 2,
+         "detected_speakers": 2, "detected_labels": ["SPEAKER_00", "SPEAKER_01"],
+         "wer": 0.09},
+    ]
+    out = tmp_path / "s.md"
+    write_summary(results, "large-v3", out)
+    md = out.read_text(encoding="utf-8")
+    # collapse-to-one is legible from the labels in the table
+    assert "1 (SPEAKER_00)" in md
+    assert "2 (SPEAKER_00, SPEAKER_01)" in md
+    assert "Speaker count" in md  # headline accuracy line present

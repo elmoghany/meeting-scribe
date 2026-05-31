@@ -55,12 +55,17 @@ def parse_urls_file(text: str) -> list[tuple[str, int | None]]:
     return out
 
 
-def count_speakers(audio_path: str) -> int | None:
-    """Distinct pyannote speaker labels for a clip, or None if diarization fails."""
+def detect_speakers(audio_path: str) -> list[str] | None:
+    """Sorted distinct pyannote speaker labels for a clip, or None if it fails.
+
+    Returning the labels (not just a count) makes the two failure modes legible
+    in the results — collapse-to-one (['SPEAKER_00']) vs phantom explosion
+    (['SPEAKER_00'..'SPEAKER_09']) — without re-running.
+    """
     try:
         from app.pipeline.diarize import diarize_pyannote
         turns = diarize_pyannote(audio_path)
-        return len({t.speaker for t in turns})
+        return sorted({t.speaker for t in turns})
     except Exception as e:  # noqa: BLE001
         print(f"[ms] diarize failed: {type(e).__name__}: {e}", file=sys.stderr, flush=True)
         return None
@@ -72,8 +77,10 @@ def run_one(model, url: str, expected: int | None, work: Path, seconds: int) -> 
         return {"url": url, "expected_speakers": expected, "status": "download_failed"}
     segs, info = model.transcribe(str(audio), beam_size=5, vad_filter=True)
     hyp = " ".join(s.text.strip() for s in segs)
-    detected = count_speakers(str(audio))
-    res = {"url": url, "expected_speakers": expected, "detected_speakers": detected,
+    labels = detect_speakers(str(audio))
+    res = {"url": url, "expected_speakers": expected,
+           "detected_speakers": len(labels) if labels is not None else None,
+           "detected_labels": labels,
            "status": "ok", "lang": info.language}
     if caps:
         ref = normalize_words(parse_vtt(
@@ -118,8 +125,10 @@ def write_summary(results: list[dict], model_name: str, out_md: Path) -> None:
     for r in results:
         if r.get("status") != "ok":
             continue
+        labels = r.get("detected_labels") or []
+        nlab = f"{len(labels)} ({', '.join(labels)})" if labels else r.get('detected_speakers', '?')
         rows.append(f"| {(r.get('url','') or '')[-22:]} | {r.get('expected_speakers','?')} "
-                    f"| {r.get('detected_speakers','?')} | {r.get('wer','-')} |")
+                    f"| {nlab} | {r.get('wer','-')} |")
     lines = [
         "# Multi-speaker verification", "",
         f"- Model: `{model_name}`  ·  clips: {a['n_total']}  ·  ok: {a['n_ok']}",
