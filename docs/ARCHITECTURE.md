@@ -17,7 +17,7 @@ codebase and the key design decisions.
                                          │ on stop: batch.run_batch()
                                          ▼
             remote.cornell (SLURM GPU)  OR  pipeline.process (local CPU)
-              ASR (large-v3) · diarization (pyannote/resemblyzer) · notes
+              ASR (large-v3) · diarization (resemblyzer/pyannote) · notes
                                          │
                                          ▼
                          db.py (SQLite + FTS5) + notes/*.md
@@ -42,7 +42,7 @@ Two compute tiers, by design:
 | `capture/recorder.py` | `DualRecorder`: mic + WASAPI-loopback → two WAVs; emits live windows. |
 | `session.py` | `MeetingSession`: capture + live ASR thread + rolling live-notes; emits events. |
 | `pipeline/asr.py` | `faster-whisper` wrapper (live windows + batch file). |
-| `pipeline/diarize.py` | pyannote (default) + key-free resemblyzer fallback; mic VAD anchors "Me". |
+| `pipeline/diarize.py` | key-free resemblyzer (default) + optional pyannote (needs token); d-vectors clustered at a calibrated cosine threshold; mic VAD anchors "Me". |
 | `pipeline/assemble.py` | Pure transcript assembly: overlap speaker-assignment, merge, renumber, render. |
 | `pipeline/notes.py` | Summary/action-items/chat backends (llamacpp · transformers · extractive) + topic keywords. |
 | `pipeline/exporters.py` | SRT/VTT/TXT/JSON/CSV + talk-time analytics (pure). |
