@@ -132,6 +132,54 @@ async function toggleHighlight(segId, div, star) {
   renderAnnotations();
 }
 
+function renderSummaryView(sm) {
+  const sd = $("summary"); sd.innerHTML = "";
+  const head = document.createElement("div"); head.className = "row between";
+  head.innerHTML = "<span></span>";
+  const edit = document.createElement("span");
+  edit.className = "ai-toggle"; edit.textContent = "✎ edit"; edit.title = "Edit notes";
+  edit.onclick = () => renderSummaryEdit(sm);
+  head.appendChild(edit); sd.appendChild(head);
+  const body = document.createElement("div");
+  let html = "";
+  if (sm.overview) html += `<p>${escapeHtml(sm.overview)}</p>`;
+  if (sm.key_points && sm.key_points.length) html += "<h3>Key points</h3>" +
+    sm.key_points.map((p) => `<div class="kp">• ${escapeHtml(p)}</div>`).join("");
+  if (sm.decisions && sm.decisions.length) html += "<h3>Decisions</h3>" +
+    sm.decisions.map((p) => `<div class="kp">• ${escapeHtml(p)}</div>`).join("");
+  body.innerHTML = html || `<p class="muted">No summary yet.</p>`;
+  sd.appendChild(body);
+}
+
+function renderSummaryEdit(sm) {
+  const sd = $("summary"); sd.innerHTML = "";
+  const mk = (label, value) => {
+    const wrap = document.createElement("div");
+    wrap.innerHTML = `<div class="ln-sub">${label}</div>`;
+    const ta = document.createElement("textarea");
+    ta.rows = label === "Overview" ? 2 : 3; ta.value = value;
+    wrap.appendChild(ta); sd.appendChild(wrap); return ta;
+  };
+  const ov = mk("Overview", sm.overview || "");
+  const kp = mk("Key points (one per line)", (sm.key_points || []).join("\n"));
+  const dc = mk("Decisions (one per line)", (sm.decisions || []).join("\n"));
+  const row = document.createElement("div"); row.className = "row";
+  const save = document.createElement("button"); save.className = "primary"; save.textContent = "Save notes";
+  const cancel = document.createElement("button"); cancel.className = "ghost"; cancel.textContent = "Cancel";
+  cancel.onclick = () => renderSummaryView(sm);
+  save.onclick = async () => {
+    const body = { overview: ov.value,
+      key_points: kp.value.split("\n").map((x) => x.trim()).filter(Boolean),
+      decisions: dc.value.split("\n").map((x) => x.trim()).filter(Boolean) };
+    const updated = await api(`/api/meetings/${currentMeeting}/summary`,
+      { method: "PUT", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body) });
+    renderSummaryView(updated);
+  };
+  row.appendChild(save); row.appendChild(cancel); sd.appendChild(row);
+  ov.focus();
+}
+
 function renderAnnotations() {
   const box = $("annotations"); box.innerHTML = "";
   const segById = {};
@@ -371,19 +419,9 @@ async function openMeeting(id) {
   });
   tg.appendChild(addTag);
 
-  // summary
-  const sm = d.summary; const sd = $("summary"); sd.innerHTML = "";
-  if (sm) {
-    if (sm.overview) sd.innerHTML += `<p>${escapeHtml(sm.overview)}</p>`;
-    if (sm.key_points?.length) {
-      sd.innerHTML += "<h3>Key points</h3>" +
-        sm.key_points.map((p) => `<div class="kp">• ${escapeHtml(p)}</div>`).join("");
-    }
-    if (sm.decisions?.length) {
-      sd.innerHTML += "<h3>Decisions</h3>" +
-        sm.decisions.map((p) => `<div class="kp">• ${escapeHtml(p)}</div>`).join("");
-    }
-  } else sd.innerHTML = `<p class="muted">No summary yet (still processing?).</p>`;
+  // summary (with an inline edit toggle)
+  const sm = d.summary || { overview: "", key_points: [], decisions: [] };
+  renderSummaryView(sm);
 
   // topics (auto keywords) + sentiment chip
   const tp = $("topics"); tp.innerHTML = "";

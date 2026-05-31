@@ -65,6 +65,26 @@ def test_export_unknown_format_400s():
         assert c.get(f"/api/meetings/{mid}/export", params={"fmt": "xyz"}).status_code == 400
 
 
+def test_edit_summary_persists():
+    mid = _mk("srv-editsum")
+    with TestClient(app) as c:
+        r = c.put(f"/api/meetings/{mid}/summary", json={
+            "overview": "Edited overview.",
+            "key_points": ["First point", "  ", "Second point"],  # blanks dropped
+            "decisions": ["Ship Friday"]})
+        assert r.status_code == 200
+        body = r.json()
+        assert body["overview"] == "Edited overview."
+        assert body["key_points"] == ["First point", "Second point"]
+    s = db.get_summary(mid)
+    assert s.overview == "Edited overview." and s.decisions == ["Ship Friday"]
+
+
+def test_edit_summary_unknown_meeting_404():
+    with TestClient(app) as c:
+        assert c.put("/api/meetings/nope/summary", json={"overview": "x"}).status_code == 404
+
+
 def test_regenerate_notes_resummarizes():
     mid = _mk("srv-regen")
     db.replace_segments(mid, [

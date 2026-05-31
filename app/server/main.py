@@ -395,6 +395,29 @@ def set_title(meeting_id: str, req: TitleReq):
     return {"title": db.get_meeting(meeting_id).title}
 
 
+class SummaryEditReq(BaseModel):
+    overview: str = ""
+    key_points: list[str] = []
+    decisions: list[str] = []
+
+
+@app.put("/api/meetings/{meeting_id}/summary")
+def edit_summary(meeting_id: str, req: SummaryEditReq):
+    """Manually edit the AI notes (overview / key points / decisions)."""
+    if not db.get_meeting(meeting_id):
+        raise HTTPException(404, "Meeting not found")
+    from ..models import Summary
+    from ..pipeline.process import export_markdown
+    summ = Summary(
+        overview=req.overview.strip(),
+        key_points=[p.strip() for p in req.key_points if p.strip()],
+        decisions=[d.strip() for d in req.decisions if d.strip()],
+    )
+    db.save_summary(meeting_id, summ)
+    export_markdown(meeting_id)
+    return summ.to_dict()
+
+
 @app.post("/api/meetings/{meeting_id}/delete-audio")
 def delete_audio(meeting_id: str):
     """Free disk by deleting the WAV recordings; keeps transcript & notes."""
