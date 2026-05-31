@@ -534,9 +534,17 @@ async function openMeeting(id) {
 
   // analytics (talk time)
   const an = $("analytics"); an.innerHTML = "";
+  const dom = $("detail-domspk"); dom.classList.add("hidden"); dom.textContent = "";
   try {
     const a = await api(`/api/meetings/${id}/analytics`);
     if (a.speakers && a.speakers.length) {
+      // at-a-glance dominant speaker in the header
+      const top = a.speakers[0];  // server sorts by talk time desc
+      if (a.speakers.length > 1) {
+        dom.innerHTML = `🗣️ <b>${escapeHtml(top.speaker)}</b> spoke most — ` +
+          `${top.time_pct}% of ${a.num_speakers} speakers`;
+        dom.classList.remove("hidden");
+      }
       for (const s of a.speakers) {
         const row = document.createElement("div");
         row.className = "tt-row";
