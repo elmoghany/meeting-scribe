@@ -61,6 +61,7 @@ token to download the gated pyannote diarization weights once.
 | 🧠 **Ask *all* meetings** | Cross-meeting Q&A with citations — like Fireflies AskFred / Fathom Perfect Recall, but local. |
 | 🔊 **Synced audio playback** | Click any line to jump there; the playing line highlights & auto-scrolls. |
 | ✨ **Highlights & comments** | Star key lines, add notes — collaboration without the cloud. |
+| ✂️ **Clips & highlight reels** | Download any line as an audio clip, or all starred lines as one reel — share a moment. |
 | 📊 **Talk-time analytics** | Per-speaker share, word counts, words-per-minute. |
 | ✏️ **Rename speakers** | Turn "Speaker 1" into real names in one click; flows to transcript, exports, analytics. |
 | 🔤 **Custom vocabulary** | Teach it names/jargon (dashboard or `.env`) to bias transcription — better proper nouns. |
