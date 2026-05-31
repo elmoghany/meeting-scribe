@@ -234,5 +234,25 @@ instead of silently on CPU int8.
    highest-*scored* (most central) sentence, adding a second only if the lead
    is short. Test guards that high-signal content wins over intro position.
    The LLM backend still produces a richer overview when configured.
-3. **Stress test ≥3 speakers.** Pending a 4-host run (All-In Podcast) — was
-   started but blocked on a Cornell VPN drop. Re-run when connectivity is back.
+3. **Stress test ≥3 speakers.** Now automated — see *Multi-speaker
+   verification* below. A `gpu`-partition batch (job 969744) runs the full
+   pipeline on panel/interview/roundtable clips and scores speaker-count
+   accuracy; numbers recorded once it completes.
+
+## Multi-speaker verification (diarization speaker-count) — METHODOLOGY
+`verify_batch` only scores single-stream WER; it never checks whether
+diarization found the *right number of people*. `scripts/verify_multispeaker.py`
+closes that gap. For each clip it runs the **full pipeline** — faster-whisper
+transcription **and** pyannote `speaker-diarization-community-1` — then reports:
+
+- **WER** vs the clip's own captions (same Levenshtein-over-words as the batch
+  harness, reusing `verify_youtube` helpers — no duplicated logic), and
+- **speaker-count accuracy**: `|detected − expected|`, summarized as
+  *exact-match %*, *within-1 %*, and *mean absolute error*.
+
+Clips are gathered by category with a category-typical expected count
+(2 = podcast/interview, 3 = panel, 4 = roundtable). The expected count is
+approximate, so **within-1** is the headline sanity metric: it catches the two
+real failure modes — diarization **collapsing to 1 speaker** (the "Others" bug
+class) or **exploding** into many phantom speakers. The pure `parse_urls_file`
+and `aggregate` helpers are unit-tested (`tests/test_verify_multispeaker.py`).
