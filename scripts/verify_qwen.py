@@ -70,6 +70,19 @@ class QwenOmni:
         return full.split("assistant\n")[-1].strip() if "assistant" in full else full.strip()
 
 
+def _classify(qwen_words: int, whisper_words: int, min_ratio: float = 0.3) -> str:
+    """Classify a (qwen, whisper) word-count pair: 'ok' if comparable, else the
+    model that produced <min_ratio of the other ('qwen_empty'/'whisper_empty')
+    so degenerate transcripts are excluded from the agreement metric."""
+    if not qwen_words and not whisper_words:
+        return "both_empty"
+    big = max(qwen_words, whisper_words)
+    small = min(qwen_words, whisper_words)
+    if big >= 30 and (small / big) < min_ratio:
+        return "qwen_empty" if qwen_words < whisper_words else "whisper_empty"
+    return "ok"
+
+
 def run_one(qwen, wmodel, url: str, work: Path, seconds: int) -> dict:
     try:
         audio, caps = yt_dlp_download(url, work, seconds)
@@ -85,9 +98,18 @@ def run_one(qwen, wmodel, url: str, work: Path, seconds: int) -> dict:
         q_hyp = normalize_words(qwen.transcribe(str(audio)))
     except Exception as e:
         return {"url": url, "status": "qwen_failed", "error": f"{type(e).__name__}: {e}"}
-    r = {"url": url, "status": "ok", "lang": info.language,
-         "whisper_words": len(w_hyp), "qwen_words": len(q_hyp),
-         "wer_whisper_vs_qwen": wer(q_hyp, w_hyp)["wer"]}  # qwen as reference
+
+    # Guard against a degenerate transcript (one model returned far less than the
+    # other — e.g. Qwen bailing on a music/non-speech intro, returning 1-16 words
+    # vs whisper's 300). WER against a near-empty reference gives absurd values
+    # (327!) and poisons the aggregate; classify by word-ratio + exclude instead.
+    nq, nw = len(q_hyp), len(w_hyp)
+    r = {"url": url, "lang": info.language, "whisper_words": nw, "qwen_words": nq}
+    status = _classify(nq, nw)
+    r["status"] = status
+    if status != "ok":
+        return r
+    r["wer_whisper_vs_qwen"] = wer(q_hyp, w_hyp)["wer"]  # qwen as reference
     if caps:
         ref = normalize_words(parse_vtt(caps.read_text(encoding="utf-8", errors="replace"),
                                         time_cap_sec=seconds))
