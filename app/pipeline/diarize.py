@@ -78,24 +78,34 @@ def diarize_segments(wav_path: str, segments: list[Segment], max_speakers: int =
     """
     import os
 
+    import soundfile as sf
     from resemblyzer import VoiceEncoder, preprocess_wav
-    from sklearn.cluster import AgglomerativeClustering
 
     if distance_threshold is None:
         # cosine-distance merge threshold; ~0.55 separates distinct real speakers.
         distance_threshold = float(os.getenv("MEETINGSCRIBE_DIAR_THRESHOLD", "0.55"))
 
-    wav = preprocess_wav(wav_path)  # mono float32 @ 16 kHz
-    sr = 16000
+    # resemblyzer.preprocess_wav() trims long silences (webrtcvad), which SHIFTS
+    # the waveform timeline. Slicing that trimmed wav by Whisper's segment
+    # timestamps (which are on the ORIGINAL timeline) yields the wrong audio per
+    # segment — the d-vectors then collapse and diarization reports one speaker
+    # for genuinely multi-speaker clips. Fix: read the untrimmed original, slice
+    # each segment on its own timeline, and preprocess each clip in isolation.
+    audio, src_sr = sf.read(wav_path)
+    if getattr(audio, "ndim", 1) > 1:
+        audio = audio.mean(axis=1)
     encoder = VoiceEncoder(verbose=False)
 
     embeds, idx_with_embed = [], []
     for i, seg in enumerate(segments):
-        s0, s1 = int(seg.start * sr), int(seg.end * sr)
-        clip = wav[s0:s1]
-        if len(clip) >= int(min_seg_sec * sr):
-            embeds.append(encoder.embed_utterance(clip))
-            idx_with_embed.append(i)
+        s0, s1 = int(seg.start * src_sr), int(seg.end * src_sr)
+        if (s1 - s0) < int(min_seg_sec * src_sr):
+            continue
+        clip = preprocess_wav(audio[s0:s1], source_sr=src_sr)
+        if len(clip) == 0:
+            continue
+        embeds.append(encoder.embed_utterance(clip))
+        idx_with_embed.append(i)
 
     return labels_from_embeddings(embeds, idx_with_embed, len(segments),
                                   distance_threshold, max_speakers)
@@ -105,19 +115,27 @@ def speaker_embeddings(wav_path: str, segments: list[Segment],
                        min_seg_sec: float = 0.6) -> dict[str, list[float]]:
     """Mean Resemblyzer d-vector per speaker label, for persistent profiles.
     Runs where torch/resemblyzer are available (the Cornell node)."""
+    import soundfile as sf
     from resemblyzer import VoiceEncoder, preprocess_wav
 
     from .speakerid import mean_embedding
 
-    wav = preprocess_wav(wav_path)
-    sr = 16000
+    # Same timeline-alignment fix as diarize_segments: slice the UNtrimmed
+    # original by segment timestamps, then preprocess each clip in isolation.
+    audio, src_sr = sf.read(wav_path)
+    if getattr(audio, "ndim", 1) > 1:
+        audio = audio.mean(axis=1)
     enc = VoiceEncoder(verbose=False)
     by_spk: dict[str, list] = {}
     for seg in segments:
-        clip = wav[int(seg.start * sr): int(seg.end * sr)]
-        if len(clip) >= int(min_seg_sec * sr):
-            by_spk.setdefault(seg.speaker, []).append(
-                enc.embed_utterance(clip).tolist())
+        s0, s1 = int(seg.start * src_sr), int(seg.end * src_sr)
+        if (s1 - s0) < int(min_seg_sec * src_sr):
+            continue
+        clip = preprocess_wav(audio[s0:s1], source_sr=src_sr)
+        if len(clip) == 0:
+            continue
+        by_spk.setdefault(seg.speaker, []).append(
+            enc.embed_utterance(clip).tolist())
     return {spk: mean_embedding(vs) for spk, vs in by_spk.items() if vs}
 
 
