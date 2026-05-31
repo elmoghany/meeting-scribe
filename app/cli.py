@@ -96,13 +96,20 @@ def _cmd_doctor(_args):
     print(f"llm_backend     : {s.llm_backend}  gguf={s.gguf_path or '-'}")
     print(f"hf_token        : {'set' if s.hf_token else 'NOT set'}")
     print(f"remote_enabled  : {s.remote_enabled}  ({s.cornell_user}@{s.cornell_host})")
+    # resemblyzer + scikit-learn back the DEFAULT (key-free) diarizer; without
+    # them diarization silently degrades to "Others". pyannote/llama_cpp are
+    # optional. ffmpeg is an external binary needed for clips + verify-youtube.
     for mod in ("soundcard", "soundfile", "faster_whisper", "fastapi", "paramiko",
-                "torch", "pyannote.audio", "llama_cpp"):
+                "resemblyzer", "sklearn", "torch", "pyannote.audio", "llama_cpp"):
         try:
             __import__(mod)
             print(f"  [ok]   {mod}")
         except Exception as e:
             print(f"  [miss] {mod}  ({type(e).__name__})")
+    import shutil
+    ff = shutil.which("ffmpeg")
+    print(f"  [{'ok' if ff else 'miss'}]   ffmpeg  "
+          f"({ff or 'not on PATH — needed for clips & verify-youtube'})")
     from .device import detect
     print(f"device          : {detect()}")
     if s.remote_enabled:

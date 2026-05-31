@@ -11,6 +11,10 @@ meetingscribe serve             # → http://127.0.0.1:8765
 First run downloads the live Whisper model. To pre-download everything for
 fully-offline use: `python -m scripts.download_models`.
 
+Troubleshooting? Run `meetingscribe doctor` — it reports your data dir, models,
+token status, GPU device, and which dependencies (incl. the key-free diarizer
+deps and `ffmpeg`) are present or missing.
+
 ## 2. Record a meeting
 1. Join your Google Meet / Zoom call as usual.
 2. In the dashboard: enter a **title**, pick the **platform**, choose a

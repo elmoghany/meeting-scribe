@@ -44,3 +44,13 @@ def test_return_code_passthrough(monkeypatch):
     assert cli.main(["doctor"]) == 3          # non-zero rc propagates
     monkeypatch.setattr(cli, "_cmd_doctor", lambda a: None)
     assert cli.main(["doctor"]) == 0          # None -> 0
+
+
+def test_doctor_reports_default_diarizer_deps_and_ffmpeg(capsys):
+    # real run (no mock): doctor must surface the key-free diarizer deps and
+    # ffmpeg so a first-run user can see what's missing.
+    assert cli.main(["doctor"]) == 0
+    out = capsys.readouterr().out
+    assert "resemblyzer" in out and "sklearn" in out   # default diarizer deps checked
+    assert "ffmpeg" in out                              # external binary checked
+    assert "hf_token" in out                            # token status shown
