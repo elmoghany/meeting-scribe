@@ -39,6 +39,15 @@ def test_html_self_contained():
     assert "Q3 &lt;Planning&gt;" in html        # title escaped
     assert "email &lt;vendor&gt;" in html        # action item escaped
     assert "we shipped v2" in html and "Me" in html and "Hello everyone." in html
+    # talk-time "Speakers" section is included for multi-speaker meetings
+    assert "<h2>Speakers</h2>" in html and "words" in html
+
+
+def test_html_speakers_section_skipped_for_single_speaker():
+    from app.models import Segment as Seg
+    one = [Seg(start=0, end=2, text="solo note", speaker="Me", source="batch")]
+    html = exporters.to_html(None, None, [], one)
+    assert "<h2>Speakers</h2>" not in html  # nothing to compare with one speaker
 
 
 def test_json_roundtrip():

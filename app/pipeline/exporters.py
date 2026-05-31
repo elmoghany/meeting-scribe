@@ -163,6 +163,15 @@ def to_html(meeting: Meeting | None, summary: Summary | None,
                          + (f" <span class='muted'>({_esc(meta)})</span>" if meta else "")
                          + "</li>")
         parts.append("</ul>")
+    tt = talk_time(segments)
+    if tt["num_speakers"] > 1:
+        parts.append("<h2>Speakers</h2><ul>")
+        for sp in tt["speakers"]:
+            parts.append(
+                f"<li><b>{_esc(sp['speaker'])}</b> "
+                f"<span class='muted'>— {sp['time_pct']}% · {int(sp['seconds'])}s · "
+                f"{sp['words']} words</span></li>")
+        parts.append("</ul>")
     parts += ["<h2>Transcript</h2>"] + rows + ["</body></html>"]
     return "".join(parts)
 
