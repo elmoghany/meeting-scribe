@@ -254,6 +254,11 @@ def chapters(segments: list[Segment], target_sec: float = 300.0,
         if not g:
             continue
         kw = keywords(g, top_n=2)
+        if not kw:
+            # short section with no repeated phrase: use its most salient words
+            # (count≥1) rather than raw, possibly mid-sentence, segment text.
+            toks = _tokenize(" ".join(s.text for s in g))
+            kw = [w for w, _ in Counter(toks).most_common(2)]
         title = ", ".join(kw) if kw else (g[0].text.strip()[:40] or "…")
         title = title[:1].upper() + title[1:]
         out.append({"start": round(g[0].start, 2), "end": round(g[-1].end, 2),

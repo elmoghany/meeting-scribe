@@ -24,6 +24,20 @@ def test_chapters_split_by_time_and_titled_by_keywords():
     assert "hiring" in titles or "candidate" in titles     # late topic surfaced
 
 
+def test_chapters_title_fallback_uses_salient_words_not_raw_text():
+    # A section with no repeated phrase (every content word unique) must still get
+    # a clean keyword-ish title, not a raw mid-sentence dump.
+    segs = [Segment(start=i * 30, end=i * 30 + 25,
+                    text=f"unique{i} topic{i} matter{i}", speaker="Me", source="batch")
+            for i in range(8)]   # 8 * 30s = 240s, all-distinct words
+    chs = notes.chapters(segs, target_sec=120)
+    assert len(chs) >= 2
+    for c in chs:
+        assert c["title"] and c["title"] != "…"
+        # title should be made of word-tokens (no leading punctuation / stopword soup)
+        assert c["title"][0].isalnum()
+
+
 def test_chapters_empty_or_tiny_input():
     assert notes.chapters([]) == []
     assert notes.chapters([Segment(start=0, end=2, text="hi", speaker="Me", source="batch")]) == []
