@@ -28,6 +28,21 @@ def test_apply_me_prior():
     assert out[1].speaker == "SPEAKER_01"
 
 
+def test_apply_me_prior_below_threshold_keeps_remote_speaker():
+    # A brief mic blip (1s) during a long remote segment (4s) is only 25%
+    # overlap — under the 0.5 threshold, so it must NOT be relabeled "Me".
+    segs = [_seg(0, 4, "long remote turn", "SPEAKER_00")]
+    mic = [Turn(0, 1, "Me")]
+    out = assemble.apply_me_prior(segs, mic, min_overlap=0.5)
+    assert out[0].speaker == "SPEAKER_00"   # interjection doesn't steal the segment
+
+
+def test_apply_me_prior_no_mic_turns_is_noop():
+    segs = [_seg(0, 2, "x", "SPEAKER_00"), _seg(2, 4, "y", "SPEAKER_01")]
+    out = assemble.apply_me_prior(segs, [], min_overlap=0.5)
+    assert [s.speaker for s in out] == ["SPEAKER_00", "SPEAKER_01"]
+
+
 def test_merge_adjacent_same_speaker():
     segs = [_seg(0, 1, "Hello", "Me"), _seg(1.2, 2, "there", "Me"),
             _seg(5, 6, "Hi", "Others")]
