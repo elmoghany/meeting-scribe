@@ -641,7 +641,14 @@ async function openMeeting(id) {
 
   // transcript (with highlight stars)
   const t = $("transcript"); t.innerHTML = "";
-  for (const s of d.segments) t.appendChild(segEl(s, true));
+  if (!d.segments.length) {
+    const busy = d.meeting.status === "processing" || d.meeting.status === "recording";
+    t.innerHTML = `<p class="muted">${busy
+      ? "Processing… the transcript and notes appear when the batch pass finishes."
+      : "No transcript for this meeting yet."}</p>`;
+  } else {
+    for (const s of d.segments) t.appendChild(segEl(s, true));
+  }
   renderAnnotations();
   $("t-search").value = ""; $("t-search-n").textContent = "";
   $("chat-answer").innerHTML = "";
