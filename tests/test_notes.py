@@ -337,6 +337,24 @@ def test_named_assignment_action_items_with_owner():
     assert "John" in by_owner                       # "John to update" -> owner John, not Alice
 
 
+def test_due_date_extraction_phrasings():
+    # the deadline phrasings that show up in real meetings
+    def due(text):
+        items = notes.extract_action_items([_seg(text)])
+        return items[0].due if items else None
+    assert due("I will send the deck by next Tuesday.") == "by next Tuesday"
+    assert due("I will ship the fix before the 15th.") == "before the 15th"
+    assert due("I will follow up in two weeks.") == "in two weeks"
+    assert due("I will finish the draft by end of day.") == "by end of day"
+    assert due("I will review it this Friday.") == "this Friday"
+
+
+def test_due_date_does_not_match_non_temporal_phrases():
+    # "next steps", "on it", "this quarter" are not deadlines
+    for phrase in ["next steps", "on it", "in the project", "this quarter"]:
+        assert notes._DUE.search(f"We will work on the {phrase} together.") is None
+
+
 def test_prediction_will_sentences_are_not_action_items():
     # precision guard: "<thing> will <predict>" must NOT be flagged (the task-verb
     # whitelist excludes prediction verbs, and pronoun subjects aren't owners).

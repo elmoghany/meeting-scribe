@@ -87,9 +87,15 @@ _FILLER = re.compile(
     rf"\blet{_AP}s (get into it|dive\s+(right\s+|on\s+)*in|get started|begin)\b",
     re.IGNORECASE)
 _DUE = re.compile(
-    r"\b(by|before|on|due)\s+"
-    r"(today|tomorrow|tonight|monday|tuesday|wednesday|thursday|friday|saturday|sunday|"
+    r"\b(by|before|on|due(?:\s+on)?|this|next|in)\s+"
+    r"(today|tomorrow|tonight|"
+    # weekday, optionally qualified ("next Tuesday", "this Friday")
+    r"(?:next\s+|this\s+)?(?:mon|tues|wednes|thurs|fri|satur|sun)day|"
+    r"(?:the\s+)?\d{1,2}(?:st|nd|rd|th)|"          # the 15th / 3rd
     r"next week|end of (the )?(day|week|month)|eod|eow|"
+    # relative durations: "in two weeks", "in 3 days", "in a month"
+    r"(?:a|an|one|two|three|four|five|six|seven|eight|nine|ten|few|couple of|\d+)"
+    r"\s+(?:day|week|month)s?|"
     r"(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s*\d{1,2}|"
     r"\d{1,2}/\d{1,2}(/\d{2,4})?)\b",
     re.IGNORECASE,
