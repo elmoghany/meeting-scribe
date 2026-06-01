@@ -6,8 +6,24 @@ assembly: mic segments are "Me", system segments get diarized labels, the two
 streams merge, and a PipelineResult is produced — plus the graceful
 "diarization failed → Others" fallback.
 """
-from app.models import Segment
+from app.models import ActionItem, Segment, Summary
 from app.pipeline import diarize, process
+
+
+def test_pipeline_result_json_roundtrip():
+    # to_json -> from_json is the remote(cluster)->local handoff; a regression here
+    # would silently corrupt offloaded compute results.
+    res = process.PipelineResult(
+        [Segment(start=0, end=2, text="hi", speaker="Me", source="batch", confidence=0.9)],
+        Summary(overview="o", key_points=["k"], decisions=["d"]),
+        [ActionItem(text="t", owner="Sam", due="Fri", done=True)],
+        "en", 2.0, "extractive", {"Me": [0.1, 0.2]})
+    res2 = process.PipelineResult.from_json(res.to_json())
+    assert res2.segments[0].text == "hi" and res2.segments[0].confidence == 0.9
+    assert res2.summary.overview == "o" and res2.summary.key_points == ["k"]
+    assert res2.action_items[0].owner == "Sam" and res2.action_items[0].done is True
+    assert res2.language == "en" and res2.duration_sec == 2.0 and res2.backend == "extractive"
+    assert res2.speaker_embeddings == {"Me": [0.1, 0.2]}
 
 
 class _FakeTranscriber:
