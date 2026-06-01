@@ -48,6 +48,39 @@ def test_diarize_segments_slices_by_timeline(tmp_path, monkeypatch):
     assert labels[2] == labels[1]                    # too-short segment inherits previous
 
 
+def test_speaker_embeddings_per_label(tmp_path, monkeypatch):
+    """speaker_embeddings (voice-profile d-vectors) shares the timeline fix:
+    one mean embedding per speaker label, sub-min segments ignored."""
+    import sys
+    import types
+
+    import soundfile as sf
+    from app.pipeline.diarize import speaker_embeddings
+    sr = 16000
+    sf.write(str(tmp_path / "p.wav"), np.full(sr * 4, 0.3, np.float32), sr)
+
+    fake = types.ModuleType("resemblyzer")
+
+    class FakeEnc:
+        def __init__(self, verbose=False):
+            pass
+
+        def embed_utterance(self, clip):
+            return np.array([float(np.mean(clip)), 0.0, 0.0])
+
+    fake.VoiceEncoder = FakeEnc
+    fake.preprocess_wav = lambda x, source_sr=None: np.asarray(x, dtype=np.float32)
+    monkeypatch.setitem(sys.modules, "resemblyzer", fake)
+
+    segs = [Segment(start=0, end=2, text="a", speaker="Me", source="batch"),
+            Segment(start=2, end=4, text="b", speaker="Sam", source="batch"),
+            Segment(start=3.95, end=4.0, text="x", speaker="Ghost", source="batch")]  # <0.6s
+    embs = speaker_embeddings(str(tmp_path / "p.wav"), segs)
+    assert set(embs) == {"Me", "Sam"}                # one entry per labeled speaker
+    assert "Ghost" not in embs                       # too-short -> no embedding -> dropped
+    assert len(embs["Me"]) == 3                       # a d-vector
+
+
 def _v(*x):
     a = np.array(x, dtype=float)
     return a / np.linalg.norm(a)
