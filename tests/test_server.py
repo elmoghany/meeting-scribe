@@ -120,6 +120,19 @@ def test_zoom_oauth_callback_escapes_error_param():
         assert "&lt;script&gt;" in r.text                    # escaped
 
 
+def test_zoom_oauth_callback_escapes_exchange_error(monkeypatch):
+    from app.integrations import zoom
+
+    def boom(code):
+        raise RuntimeError("<img src=x onerror=alert(1)>")
+
+    monkeypatch.setattr(zoom, "exchange_code", boom)
+    with TestClient(app) as c:
+        r = c.get("/oauth/zoom/callback", params={"code": "abc"})
+        assert "<img src=x" not in r.text          # exception message not reflected raw
+        assert "&lt;img" in r.text                  # escaped
+
+
 def test_export_unknown_format_400s():
     mid = _mk("srv-bad-fmt")
     db.replace_segments(mid, [Segment(start=0, end=1, text="hi", speaker="Me",
