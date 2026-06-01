@@ -106,6 +106,16 @@ def test_export_empty_meeting_does_not_crash():
         assert d["transcript"] == [] and d["meeting"]["id"] == mid
 
 
+def test_zoom_oauth_callback_escapes_error_param():
+    # a crafted callback URL must not reflect raw HTML (reflected XSS)
+    with TestClient(app) as c:
+        r = c.get("/oauth/zoom/callback",
+                  params={"error": "<script>alert(1)</script>"})
+        assert r.status_code == 200
+        assert "<script>alert(1)</script>" not in r.text   # not reflected raw
+        assert "&lt;script&gt;" in r.text                    # escaped
+
+
 def test_export_unknown_format_400s():
     mid = _mk("srv-bad-fmt")
     db.replace_segments(mid, [Segment(start=0, end=1, text="hi", speaker="Me",

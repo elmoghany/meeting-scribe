@@ -751,13 +751,14 @@ def zoom_oauth_start():
 
 @app.get("/oauth/zoom/callback", response_class=HTMLResponse)
 def zoom_oauth_callback(code: str = "", error: str = ""):
+    import html as _html
     from ..integrations import zoom
     if error:
-        return HTMLResponse(f"<h2>Zoom authorization failed: {error}</h2>")
+        return HTMLResponse(f"<h2>Zoom authorization failed: {_html.escape(error)}</h2>")
     try:
         zoom.exchange_code(code)
     except Exception as e:
-        return HTMLResponse(f"<h2>Zoom token exchange failed</h2><pre>{e}</pre>",
+        return HTMLResponse(f"<h2>Zoom token exchange failed</h2><pre>{_html.escape(str(e))}</pre>",
                             status_code=500)
     return HTMLResponse("<h2>&#9989; Zoom connected. You can close this tab and "
                         "return to MeetingScribe.</h2>")
