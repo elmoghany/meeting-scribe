@@ -4,9 +4,12 @@ Handlers are monkeypatched so we exercise parsing + dispatch without running
 heavy command bodies (uvicorn, model downloads, etc.). main() re-reads the
 module-global handlers each call, so patching cli._cmd_* takes effect.
 """
+import time
+
 import pytest
 
-from app import cli
+from app import cli, db
+from app.models import Meeting, Segment
 
 
 def test_serve_parses_host_port_reload(monkeypatch):
@@ -56,3 +59,18 @@ def test_doctor_reports_default_diarizer_deps_and_ffmpeg(capsys):
     assert "hf_token" in out                            # token status shown
     assert "db " in out and "meeting" in out            # DB opens + migrates, count shown
     assert "disk_free" in out and "GB" in out            # disk space reported (recording needs it)
+
+
+def test_search_command_prints_hits(capsys):
+    # exercises the real _cmd_search body end-to-end (db.search + formatted print)
+    db.reset_connection()
+    mid = "cli-search-m"
+    if not db.get_meeting(mid):
+        db.create_meeting(Meeting(id=mid, title="CLI Search", platform="meet",
+                                  started_at=time.time()))
+    db.add_segments(mid, [Segment(start=65, end=70, text="the quarterly budget review",
+                                  speaker="Me", source="batch")])
+    assert cli.main(["search", "quarterly"]) == 0
+    out = capsys.readouterr().out
+    assert "CLI Search" in out and "quarterly" in out.lower()
+    assert "01:05" in out                    # 65s formatted mm:ss
