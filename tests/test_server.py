@@ -74,6 +74,25 @@ def test_export_filename_uses_title(_=None):
         assert 'filename="Q3-Planning.txt"' in r.headers.get("content-disposition", "")
 
 
+def test_export_each_format_dispatches():
+    mid = _mk("srv-allfmt", title="Demo")
+    db.replace_segments(mid, [
+        Segment(start=0, end=2, text="We shipped v2 and decided to launch Friday.",
+                speaker="Me", source="batch")], source="batch")
+    expect = {"md": "markdown", "txt": "text/plain", "srt": "text/plain",
+              "vtt": "text/vtt", "json": "application/json", "html": "text/html"}
+    with TestClient(app) as c:
+        for fmt, media in expect.items():
+            r = c.get(f"/api/meetings/{mid}/export", params={"fmt": fmt})
+            assert r.status_code == 200, f"{fmt} -> {r.status_code}"
+            assert media in r.headers.get("content-type", ""), f"{fmt} media"
+            assert r.text.strip(), f"{fmt} empty body"
+        # json export is parseable and complete
+        import json as _json
+        assert "transcript" in _json.loads(c.get(
+            f"/api/meetings/{mid}/export", params={"fmt": "json"}).text)
+
+
 def test_export_unknown_format_400s():
     mid = _mk("srv-bad-fmt")
     db.replace_segments(mid, [Segment(start=0, end=1, text="hi", speaker="Me",
