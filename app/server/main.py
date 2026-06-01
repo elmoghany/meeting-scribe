@@ -451,6 +451,8 @@ def edit_summary(meeting_id: str, req: SummaryEditReq):
 @app.post("/api/meetings/{meeting_id}/delete-audio")
 def delete_audio(meeting_id: str):
     """Free disk by deleting the WAV recordings; keeps transcript & notes."""
+    if not db.get_meeting(meeting_id):      # validate before deleting from a path
+        raise HTTPException(404, "Meeting not found")
     rec = get_settings().recordings_dir / meeting_id
     removed, freed = [], 0
     if rec.exists():
@@ -522,6 +524,8 @@ def rename_speakers(meeting_id: str, req: RenameReq):
 
 @app.post("/api/meetings/{meeting_id}/reprocess")
 def reprocess(meeting_id: str):
+    if not db.get_meeting(meeting_id):      # validate before forming a filesystem path
+        raise HTTPException(404, "Meeting not found")
     s = get_settings()
     audio_dir = str(s.recordings_dir / meeting_id)
 
