@@ -81,6 +81,26 @@ def test_speaker_embeddings_per_label(tmp_path, monkeypatch):
     assert len(embs["Me"]) == 3                       # a d-vector
 
 
+def test_label_speakers_pyannote_success_assigns_and_renumbers(monkeypatch):
+    """pyannote backend success: turns are assigned by overlap and the raw
+    SPEAKER_00/01 labels normalized to Speaker 1/2."""
+    from app import config
+    from app.pipeline import diarize
+    from app.pipeline.assemble import Turn
+
+    monkeypatch.setenv("MEETINGSCRIBE_DIARIZER", "pyannote")
+    config.get_settings.cache_clear()
+    monkeypatch.setattr(diarize, "diarize_pyannote",
+                        lambda wav, **k: [Turn(0, 2, "SPEAKER_00"), Turn(2, 4, "SPEAKER_01")])
+    try:
+        segs = [Segment(start=0, end=2, text="a", speaker="Unknown", source="batch"),
+                Segment(start=2, end=4, text="b", speaker="Unknown", source="batch")]
+        out = diarize.label_speakers("x.wav", segs)
+        assert [s.speaker for s in out] == ["Speaker 1", "Speaker 2"]   # normalized labels
+    finally:
+        config.get_settings.cache_clear()
+
+
 def test_label_speakers_falls_back_when_pyannote_unavailable(tmp_path, monkeypatch):
     """pyannote configured but unavailable (gated/no token) must degrade to the
     key-free path, not crash."""
