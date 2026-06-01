@@ -304,3 +304,19 @@ handful of noisy category-assumption clips. Users who accept the gated terms and
 set a HF token get pyannote, which separates speakers more reliably; the key-free
 default is the no-token fallback and is now correct-in-the-common-case rather than
 broken. Speakers are always editable in the UI, so ±1 is recoverable.
+
+## End-to-end pipeline sweep (2026-05-29)
+Running the **full** `compute_pipeline` (ASR → diarization → notes → chapters) on
+10 cached real clips — not just components — caught an integration bug unit tests
+missed: `merge_adjacent` merged sub-second-gap same-speaker segments without a
+length cap, so single-speaker stretches collapsed into giant blocks. Two clips
+became a **single 150s segment** (so 0 chapters, ~no click-to-seek anchors, and
+unusable 150s subtitle cues); 8/10 had a >35s segment.
+
+A `max_len` cap (default 30s) on `merge_adjacent` fixed it — re-running the sweep:
+max segment length dropped to ~29–30s on 9/10 clips and chapters were restored on
+the previously-collapsed single-speaker clips. Diarization on this set looked
+healthy (e.g. a 4-person clip resolved to 4 speakers). One residual: a clip of
+continuous Spanish speech still had a single **raw** 54s Whisper segment — the cap
+stops *merging* but cannot split an already-long segment without word-level
+timestamps; a rare artifact, left as-is rather than splitting text imprecisely.
