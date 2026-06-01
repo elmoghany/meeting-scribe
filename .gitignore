@@ -24,3 +24,8 @@ bot/sdk/
 # os
 .DS_Store
 Thumbs.db
+
+# coverage
+.coverage
+.coverage.*
+htmlcov/
