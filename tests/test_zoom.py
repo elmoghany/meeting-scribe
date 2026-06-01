@@ -64,3 +64,19 @@ def test_zoom_token_exchange_persist_and_access(monkeypatch):
         if tok_path.exists():
             tok_path.unlink()
         config.get_settings.cache_clear()
+
+
+def test_zoom_upcoming_meetings_normalizes(monkeypatch):
+    fake = {"meetings": [
+        {"id": 12345, "topic": "Standup", "start_time": "2026-05-26T15:00:00Z",
+         "duration": 30, "join_url": "https://zoom.us/j/123"},
+        {"id": 67890},                                  # missing fields -> defaults
+    ]}
+    monkeypatch.setattr(zoom, "_get", lambda path, params=None: fake)
+    out = zoom.upcoming_meetings()
+    assert out[0] == {"id": "12345", "topic": "Standup",
+                      "start_time": "2026-05-26T15:00:00Z", "duration": 30,
+                      "join_url": "https://zoom.us/j/123"}
+    assert out[1]["id"] == "67890"                      # id coerced to str
+    assert out[1]["topic"] == "Zoom meeting"            # default topic
+    assert out[1]["join_url"] is None                   # missing -> None
