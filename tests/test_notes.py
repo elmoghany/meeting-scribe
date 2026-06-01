@@ -261,6 +261,9 @@ def test_sentiment_negation_flips():
     # "not good" should NOT count as positive
     s = notes.sentiment([_seg("That is not good and not great.")])
     assert s["positive"] == 0 and s["negative"] >= 2
+    # and the inverse (litotes): "not bad" / "no problem" read positive
+    s2 = notes.sentiment([_seg("Honestly that is not bad and no problem at all.")])
+    assert s2["positive"] >= 1 and s2["negative"] == 0
 
 
 def test_sentiment_empty():
