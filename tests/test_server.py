@@ -301,6 +301,31 @@ def test_clip_and_highlight_reel_download_end_to_end():
         shutil.rmtree(rec, ignore_errors=True)
 
 
+def test_rename_speakers_enrolls_voice_profile():
+    mid = _mk("srv-rename-enroll")
+    db.add_segments(mid, [Segment(start=0, end=2, text="hi", speaker="Speaker 1", source="batch"),
+                          Segment(start=2, end=4, text="bye", speaker="Speaker 1", source="batch")])
+    db.save_meeting_embeddings(mid, {"Speaker 1": [0.1, 0.2, 0.3, 0.4]})
+    with TestClient(app) as c:
+        r = c.post(f"/api/meetings/{mid}/rename-speakers",
+                   json={"mapping": {"Speaker 1": "Alice"}})
+        body = r.json()
+        assert "Alice" in body["enrolled"]            # profile enrolled from the embedding
+        assert body["updated"] >= 1                    # segments relabeled in place
+    assert db.get_meeting_embedding(mid, "Alice") is not None   # embedding carried to new name
+    assert all(s.speaker == "Alice" for s in db.get_segments(mid, source="batch"))
+
+
+def test_rename_speakers_without_embedding_just_relabels():
+    mid = _mk("srv-rename-plain")
+    db.add_segments(mid, [Segment(start=0, end=2, text="hi", speaker="Speaker 2", source="batch")])
+    with TestClient(app) as c:
+        body = c.post(f"/api/meetings/{mid}/rename-speakers",
+                      json={"mapping": {"Speaker 2": "Bob"}}).json()
+        assert body["enrolled"] == []                  # no embedding -> nothing enrolled
+        assert body["updated"] >= 1                     # but still relabeled
+
+
 def test_highlight_reel_without_highlights_404s():
     mid = _mk("srv-no-highlights")
     db.add_segments(mid, [Segment(start=0, end=2, text="hello", speaker="Me", source="batch")])
