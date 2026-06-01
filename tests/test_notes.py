@@ -179,6 +179,10 @@ def test_action_items_reject_speech_acts_but_keep_real_tasks():
     # genuine commitments — including 'tell <someone>' — still register
     assert notes.extract_action_items([_seg("I'll send the report by Friday.")])
     assert notes.extract_action_items([_seg("I'll tell Sam to review the design.")])
+    # transitional "let's go to ..." is navigation, not a task — but "go ahead" is
+    assert notes.extract_action_items([_seg("Let's go to the next clip now.")]) == []
+    assert notes.extract_action_items([_seg("Let's go back to the budget topic.")]) == []
+    assert notes.extract_action_items([_seg("Let's go ahead and schedule the review.")])
 
 
 def test_decisions_dont_match_bare_final():

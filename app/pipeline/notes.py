@@ -70,6 +70,10 @@ _SPEECH_ACT = re.compile(
     rf"\b(i{_AP}ll|i will|we{_AP}ll|we will)\s+"
     r"(say|admit|argue|bet|guess|assume|suppose|add|note|mention|be honest|tell you)\b",
     re.IGNORECASE)
+# "let's go to / over to / back to / on to the next clip" — a transition, not a
+# task (true in meetings too: "let's go to the next agenda item"). NOT "let's go
+# ahead" (which is actional), so the trailing "to" is required.
+_TRANSITION = re.compile(rf"\blet{_AP}s go (back |over |on )?to\b", re.IGNORECASE)
 _DUE = re.compile(
     r"\b(by|before|on|due)\s+"
     r"(today|tomorrow|tonight|monday|tuesday|wednesday|thursday|friday|saturday|sunday|"
@@ -333,6 +337,8 @@ def _is_actionable(sent: str) -> bool:
         return False                       # questions aren't action items
     if _SPEECH_ACT.search(s):
         return False                       # "I'll say/admit/argue …" is talk, not a task
+    if _TRANSITION.search(s):
+        return False                       # "let's go to the next clip" is a transition
     if len(s.split()) < 4:
         return False                       # "Let's see." / "I'll check." fragments
     if _HEDGE.search(s) and not (_STRONG_COMMIT.search(s) or _DUE.search(s)):
