@@ -41,6 +41,9 @@ All notable changes to MeetingScribe are documented here. Format loosely follows
 - **Rename/merge speakers keeps highlights & comments.** It used to replace
   segments (new IDs), orphaning every annotation. Now it relabels in place,
   preserving segment IDs so your stars and notes stay attached.
+- **Reprocess keeps highlights & comments.** Re-transcription necessarily makes
+  new segments, but annotations are now re-anchored to the segment covering the
+  same moment instead of being orphaned.
 
 ### Added
 - **Auto chapters** — jump-to-topic timeline, keyword-titled, click to seek;
