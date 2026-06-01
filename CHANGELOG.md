@@ -34,6 +34,10 @@ All notable changes to MeetingScribe are documented here. Format loosely follows
   go to the next clip") while keeping real commitments; over-long unpunctuated
   "sentences" (e.g. Spanish Whisper output without `.!?`) are wrapped so
   overviews/decisions stay readable instead of a 200-word run.
+- **Regenerate no longer destroys your work.** Re-running notes wiped
+  manually-added action items and reset every done checkmark. Items now track an
+  auto/manual source; regenerate replaces only the auto ones and carries over
+  done-state by text — manual items and completions survive.
 
 ### Added
 - **Auto chapters** — jump-to-topic timeline, keyword-titled, click to seek;
