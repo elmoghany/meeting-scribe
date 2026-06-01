@@ -16,12 +16,31 @@ from .assemble import _split_long
 # paragraph cue is unreadable on screen. Split long segments into ~this-long
 # cues for SRT/VTT (timing within a segment is approximate but readability wins).
 _CUE_MAX_SEC = 8.0
+_SENTENCE = re.compile(r"(?<=[.!?])\s+")
 
 
 def _cues(segments: list[Segment]) -> list[Segment]:
+    """Split long segments into readable subtitle cues, preferring SENTENCE
+    boundaries (a cue breaking mid-sentence reads badly). Falls back to an
+    even time/word split when a segment has no usable sentence breaks. Cue
+    timing is char-proportional — approximate but natural."""
     out: list[Segment] = []
     for s in sorted(segments, key=lambda x: x.start):
-        out.extend(_split_long(s, _CUE_MAX_SEC))
+        dur = s.end - s.start
+        if dur <= _CUE_MAX_SEC:
+            out.append(s)
+            continue
+        sents = [x.strip() for x in _SENTENCE.split(s.text.strip()) if x.strip()]
+        if len(sents) < 2:
+            out.extend(_split_long(s, _CUE_MAX_SEC))   # no sentence breaks
+            continue
+        total = sum(len(x) for x in sents) or 1
+        t = s.start
+        for j, sent in enumerate(sents):
+            end = s.end if j == len(sents) - 1 else min(s.end, t + dur * len(sent) / total)
+            out.append(Segment(start=t, end=end, text=sent,
+                               speaker=s.speaker, source=s.source))
+            t = end
     return out
 
 

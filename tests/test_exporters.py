@@ -24,14 +24,25 @@ def test_vtt_format():
 
 def test_srt_splits_long_cues_for_readability():
     from app.models import Segment as Seg
-    # one 24s paragraph segment -> should become several short subtitle cues
+    # one 24s paragraph segment with no sentence breaks -> even-split into cues
     long = [Seg(start=0, end=24, text=" ".join(f"w{i}" for i in range(30)),
                 speaker="Me", source="batch")]
     srt = exporters.to_srt(long)
-    # multiple numbered cues, each spanning well under the 24s block
     assert "1\n" in srt and "2\n" in srt and "3\n" in srt
-    # the last cue ends at the segment end; first starts at 0
     assert "00:00:00,000 -->" in srt and "--> 00:00:24,000" in srt
+
+
+def test_srt_prefers_sentence_boundaries():
+    from app.models import Segment as Seg
+    # a long segment with sentences -> each cue is a whole sentence, not split mid-way
+    seg = [Seg(start=0, end=30, speaker="Me", source="batch",
+               text="First idea here. Second idea follows. Third wraps it up.")]
+    cues = [ln for ln in exporters.to_srt(seg).splitlines()
+            if ln and "-->" not in ln and not ln.isdigit()]
+    # each cue is a whole sentence (with the speaker prefix), not split mid-way
+    assert any(c.endswith("First idea here.") for c in cues)
+    assert any(c.endswith("Second idea follows.") for c in cues)
+    assert any(c.endswith("Third wraps it up.") for c in cues)
 
 
 def test_txt_format():
