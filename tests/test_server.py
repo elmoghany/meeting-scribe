@@ -100,6 +100,19 @@ def test_regenerate_notes_resummarizes():
     assert any("report" in a.text.lower() for a in db.get_action_items(mid))
 
 
+def test_regenerate_endpoint_keeps_manual_action_item():
+    mid = _mk("srv-regen-manual")
+    db.replace_segments(mid, [Segment(start=0, end=3, text="I will send the report by Friday.",
+                                      speaker="Me", source="batch")], source="batch")
+    with TestClient(app) as c:
+        c.post(f"/api/meetings/{mid}/regenerate-notes")                 # initial auto extract
+        c.post(f"/api/meetings/{mid}/action-items", json={"text": "buy the coffee"})  # user adds
+        c.post(f"/api/meetings/{mid}/regenerate-notes")                 # regenerate again
+        texts = [a.text.lower() for a in db.get_action_items(mid)]
+    assert any("coffee" in t for t in texts)        # manual item survived regeneration
+    assert any("report" in t for t in texts)        # auto item still present
+
+
 def test_delete_batch_removes_selected_meetings():
     a, b, c_ = _mk("srv-bulk-a"), _mk("srv-bulk-b"), _mk("srv-bulk-c")
     rec = get_settings().recordings_dir / a
