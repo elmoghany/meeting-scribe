@@ -210,6 +210,16 @@ def test_delete_batch_empty_is_noop():
             "deleted": [], "count": 0}
 
 
+def test_tag_endpoints():
+    mid = _mk("srv-tags")
+    with TestClient(app) as c:
+        r = c.post(f"/api/meetings/{mid}/tags", json={"text": "Standup"})
+        assert r.status_code == 200 and "standup" in r.json()["tags"]   # normalized
+        assert any(t["tag"] == "standup" for t in c.get("/api/tags").json())  # global bar
+        r2 = c.delete(f"/api/meetings/{mid}/tags/standup")
+        assert "standup" not in r2.json()["tags"]
+
+
 def test_edit_segment_and_markdown_endpoints():
     mid = _mk("srv-editseg")
     db.replace_segments(mid, [Segment(start=0, end=2, text="helo wrld", speaker="Me",
