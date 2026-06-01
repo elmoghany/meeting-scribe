@@ -729,7 +729,7 @@ $("btn-ask-all").onclick = async () => {
     const r = await post("/api/ask", { question: q });
     let html = `<div class="answer">${escapeHtml(r.answer)}</div>`;
     if (r.sources && r.sources.length) {
-      html += `<div class="ask-src">sources:</div>`;
+      html += `<div class="ask-src">${r.sources.length} source${r.sources.length === 1 ? "" : "s"}:</div>`;
       for (const s of r.sources) {
         const mm = String(Math.floor(s.start / 60)).padStart(2, "0");
         const ss = String(Math.floor(s.start % 60)).padStart(2, "0");
