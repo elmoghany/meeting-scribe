@@ -34,6 +34,16 @@ def test_notify_no_url_is_noop():
     assert webhook.notify("x", None, None, [], url=None) is False
 
 
+def test_notify_non_2xx_returns_false(monkeypatch):
+    import httpx
+
+    class _R:
+        status_code = 500          # server error / bad hook URL -> not delivered
+
+    monkeypatch.setattr(httpx, "post", lambda *a, **k: _R())
+    assert webhook.notify("x", None, None, [], url="https://example.com/hook") is False
+
+
 def test_notify_swallows_errors(monkeypatch):
     import httpx
 
