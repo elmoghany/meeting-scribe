@@ -17,6 +17,7 @@ let activeTagFilter = null;
 let selectMode = false;
 let selectedIds = new Set();
 let mlFilter = "";
+let mlFollowup = false;
 
 function chip(label, active, onclick) {
   const s = document.createElement("span");
@@ -396,15 +397,16 @@ async function refreshMeetings() {
   const q = activeTagFilter ? "?tag=" + encodeURIComponent(activeTagFilter) : "";
   const all = await api("/api/meetings" + q);
   const needle = mlFilter.trim().toLowerCase();
-  const list = needle
+  let list = needle
     ? all.filter((m) => (m.title || "").toLowerCase().includes(needle))
     : all;
+  if (mlFollowup) list = list.filter((m) => m.stats && m.stats.open_actions > 0);
   const emptyEl = $("ml-empty");
   if (all.length === 0) {
     emptyEl.textContent = "No meetings yet — start recording above to capture one.";
     emptyEl.classList.remove("hidden");
-  } else if (needle && list.length === 0) {
-    emptyEl.textContent = "No meetings match.";
+  } else if (list.length === 0) {
+    emptyEl.textContent = mlFollowup ? "No meetings with open action items." : "No meetings match.";
     emptyEl.classList.remove("hidden");
   } else {
     emptyEl.classList.add("hidden");
@@ -819,6 +821,10 @@ $("vocab-save").onclick = async () => {
 
 $("ml-filter").addEventListener("input", (e) => {
   mlFilter = e.target.value;
+  refreshMeetings();
+});
+$("ml-followup").addEventListener("change", (e) => {
+  mlFollowup = e.target.checked;
   refreshMeetings();
 });
 $("ml-select").addEventListener("click", () => {
