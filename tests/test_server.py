@@ -217,6 +217,56 @@ def test_search_returns_matching_segments():
         assert len(hits) >= 1                                     # FTS found the segment
 
 
+def test_meeting_markdown_and_analytics_and_delete():
+    mid = _mk("srv-md", title="Markdown Meeting")
+    db.add_segments(mid, [
+        Segment(start=0, end=4, text="Alpha discussed the budget.", speaker="Alpha", source="batch"),
+        Segment(start=4, end=8, text="Beta agreed to follow up.", speaker="Beta", source="batch")])
+    with TestClient(app) as c:
+        md = c.get(f"/api/meetings/{mid}/markdown")
+        assert md.status_code == 200 and "Markdown Meeting" in md.text   # rendered markdown
+        assert c.get("/api/meetings/nope/markdown").status_code == 404
+
+        analytics = c.get(f"/api/meetings/{mid}/analytics").json()
+        assert analytics["num_speakers"] == 2                  # talk-time computed
+        assert any(sp["speaker"] == "Alpha" for sp in analytics["speakers"])
+
+        assert c.delete(f"/api/meetings/{mid}").json()["deleted"] == mid
+        assert c.get(f"/api/meetings/{mid}").status_code == 404           # gone after delete
+
+
+def test_regenerate_notes_success_with_template():
+    mid = _mk("srv-regen-ok")
+    db.add_segments(mid, [
+        Segment(start=0, end=4, speaker="Sam", source="batch",
+                text="We decided to ship the beta on Friday and email the team."),
+        Segment(start=4, end=8, speaker="Alex", source="batch",
+                text="I'll prepare the release notes by Thursday.")])
+    with TestClient(app) as c:
+        r = c.post(f"/api/meetings/{mid}/regenerate-notes", params={"template": "standup"})
+        assert r.status_code == 200
+        body = r.json()
+        assert body["template"] == "standup" and body["backend"] == "extractive"
+        assert body["action_items"] >= 1                       # extracted from transcript
+    assert db.get_meeting(mid).template == "standup"           # template remembered
+
+
+def test_manual_action_item_add_and_toggle():
+    mid = _mk("srv-manual-ai")
+    with TestClient(app) as c:
+        assert c.post("/api/meetings/nope/action-items",
+                      json={"text": "x"}).status_code == 404    # unknown meeting
+        assert c.post(f"/api/meetings/{mid}/action-items",
+                      json={"text": "   "}).status_code == 400   # blank text rejected
+        r = c.post(f"/api/meetings/{mid}/action-items",
+                   json={"text": "Book the room", "owner": "Me", "due": "Mon"})
+        assert r.status_code == 200
+        items = c.get("/api/action-items").json()
+        item = next(a for a in items if a["text"] == "Book the room")
+        tog = c.post(f"/api/action/{item['id']}", params={"done": True}).json()
+        assert tog["done"] is True                              # toggled complete
+
+
 def test_highlight_reel_without_highlights_404s():
     mid = _mk("srv-no-highlights")
     db.add_segments(mid, [Segment(start=0, end=2, text="hello", speaker="Me", source="batch")])
