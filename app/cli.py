@@ -91,6 +91,12 @@ def _cmd_doctor(_args):
     s = get_settings()
     print(f"data_dir        : {s.data_dir}  (exists={s.data_dir.exists()})")
     print(f"db_path         : {s.db_path}")
+    try:
+        from . import db as _db  # noqa: PLC0415
+        n = len(_db.list_meetings(limit=100000))
+        print(f"db              : ok — opens + migrates cleanly, {n} meeting(s)")
+    except Exception as e:  # noqa: BLE001
+        print(f"db              : ERROR — {type(e).__name__}: {e}")
     print(f"live_model      : {s.live_model} ({s.live_compute})")
     print(f"batch_model     : {s.batch_model}")
     print(f"llm_backend     : {s.llm_backend}  gguf={s.gguf_path or '-'}")

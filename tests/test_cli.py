@@ -54,3 +54,4 @@ def test_doctor_reports_default_diarizer_deps_and_ffmpeg(capsys):
     assert "resemblyzer" in out and "sklearn" in out   # default diarizer deps checked
     assert "ffmpeg" in out                              # external binary checked
     assert "hf_token" in out                            # token status shown
+    assert "db " in out and "meeting" in out            # DB opens + migrates, count shown
