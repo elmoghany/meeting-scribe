@@ -382,6 +382,31 @@ def replace_segments(meeting_id: str, segs: list[Segment], source: str) -> None:
         )
 
 
+def rename_segment_speakers(meeting_id: str, mapping: dict[str, str],
+                            source: str | None = None) -> int:
+    """Relabel speakers IN PLACE (single CASE update, preserving segment IDs).
+
+    Using replace_segments here would assign new IDs and orphan annotations
+    (highlights/comments are keyed by segment_id). A CASE expression applies the
+    mapping to each segment's ORIGINAL label exactly once, so chained entries
+    (e.g. {A:B, B:C}) don't cascade. Returns rows updated. FTS stays in sync via
+    the segments_au trigger."""
+    pairs = [(o, n) for o, n in mapping.items() if n and n != o]
+    if not pairs:
+        return 0
+    case = "CASE speaker " + " ".join("WHEN ? THEN ?" for _ in pairs) + " ELSE speaker END"
+    args: list = []
+    for o, n in pairs:
+        args += [o, n]
+    where, wargs = "meeting_id = ?", [meeting_id]
+    if source is not None:
+        where += " AND source = ?"
+        wargs.append(source)
+    with cursor() as c:
+        return c.execute(f"UPDATE segments SET speaker = {case} WHERE {where}",
+                         args + wargs).rowcount
+
+
 def update_segment(segment_id: int, text: str | None = None,
                    speaker: str | None = None) -> dict | None:
     """Edit a segment's text and/or speaker (manual correction). The FTS index

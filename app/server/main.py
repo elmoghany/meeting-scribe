@@ -490,7 +490,6 @@ def remove_meeting_tag(meeting_id: str, tag: str):
 
 @app.post("/api/meetings/{meeting_id}/rename-speakers")
 def rename_speakers(meeting_id: str, req: RenameReq):
-    from ..pipeline import assemble
     # Enroll a persistent voice profile for each rename (if we have that
     # speaker's embedding), so this person is auto-recognized in future meetings.
     enrolled = []
@@ -500,12 +499,11 @@ def rename_speakers(meeting_id: str, req: RenameReq):
             db.upsert_profile(new, emb)
             db.save_meeting_embeddings(meeting_id, {new: emb})
             enrolled.append(new)
-    segs = db.get_segments(meeting_id, source="batch")
-    segs = assemble.rename_speakers(segs, req.mapping)
-    db.replace_segments(meeting_id, segs, source="batch")
+    # Relabel in place (keeps segment IDs, so highlights/comments stay attached).
+    updated = db.rename_segment_speakers(meeting_id, req.mapping)
     from ..pipeline.process import export_markdown
     export_markdown(meeting_id)
-    return {"updated": len(segs), "enrolled": enrolled}
+    return {"updated": updated, "enrolled": enrolled}
 
 
 @app.post("/api/meetings/{meeting_id}/reprocess")

@@ -135,6 +135,27 @@ def test_chapters_endpoint():
         assert c.get("/api/meetings/nope/chapters").status_code == 404
 
 
+def test_rename_speakers_preserves_segment_ids_and_annotations():
+    mid = _mk("srv-rename-ids")
+    db.replace_segments(mid, [
+        Segment(start=0, end=2, text="hi", speaker="Speaker 1", source="batch"),
+        Segment(start=2, end=4, text="yo", speaker="Speaker 2", source="batch"),
+    ], source="batch")
+    seg = db.get_segments(mid, source="batch")[0]      # Speaker 1's segment
+    sid_before = seg.id
+    # highlight that segment — an annotation keyed by segment_id
+    db.add_annotation(mid, kind="highlight", segment_id=sid_before)
+    with TestClient(app) as c:
+        r = c.post(f"/api/meetings/{mid}/rename-speakers",
+                   json={"mapping": {"Speaker 1": "Sam"}})
+        assert r.status_code == 200
+    segs = {s.id: s for s in db.get_segments(mid, source="batch")}
+    assert sid_before in segs                          # ID preserved (was orphaned before)
+    assert segs[sid_before].speaker == "Sam"           # relabeled in place
+    ann = db.list_annotations(mid)
+    assert ann and ann[0]["segment_id"] == sid_before  # highlight still attached
+
+
 def test_merge_speakers_via_rename_collapses_labels():
     mid = _mk("srv-merge")
     db.replace_segments(mid, [
