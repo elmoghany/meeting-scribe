@@ -38,6 +38,9 @@ All notable changes to MeetingScribe are documented here. Format loosely follows
   manually-added action items and reset every done checkmark. Items now track an
   auto/manual source; regenerate replaces only the auto ones and carries over
   done-state by text — manual items and completions survive.
+- **Rename/merge speakers keeps highlights & comments.** It used to replace
+  segments (new IDs), orphaning every annotation. Now it relabels in place,
+  preserving segment IDs so your stars and notes stay attached.
 
 ### Added
 - **Auto chapters** — jump-to-topic timeline, keyword-titled, click to seek;
