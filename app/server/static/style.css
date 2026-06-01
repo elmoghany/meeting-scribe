@@ -144,6 +144,7 @@ ul { list-style: none; padding: 0; margin: 0; }
 .answer { background: #11151d; border: 1px solid var(--line); border-radius: 8px; padding: 10px; margin-top: 8px; }
 .hit { padding: 6px 0; border-bottom: 1px solid #1c2029; cursor: pointer; font-size: 13px; }
 .hit b { color: var(--fg); }
+.hit:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; border-radius: 4px; }
 .ask-src { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .04em; margin: 8px 0 2px; }
 mark { background: #3a3f10; color: #f7f7c0; }
 .tt-row { display: flex; align-items: center; gap: 10px; padding: 3px 0; font-size: 13px; }

@@ -326,6 +326,17 @@ function seekTo(t) {
   p.play().catch(() => {});
 }
 
+// Make a clickable element keyboard-accessible: focusable + Enter/Space activate.
+function activatable(el, fn) {
+  el.tabIndex = 0;
+  el.setAttribute("role", "button");
+  el.onclick = fn;
+  el.onkeydown = (e) => {
+    if (e.key === "Enter" || e.key === " ") { e.preventDefault(); fn(); }
+  };
+  return el;
+}
+
 // Scroll to + briefly flash the transcript line at time t (used by global search
 // so a hit takes you straight to the line). Seeks the player but doesn't autoplay.
 function jumpToTime(t) {
@@ -719,7 +730,7 @@ $("btn-ask-all").onclick = async () => {
     }
     $("ask-answer").innerHTML = html;
     $("ask-answer").querySelectorAll(".hit[data-id]").forEach((el) =>
-      { el.onclick = async () => { await openMeeting(el.dataset.id); jumpToTime(+el.dataset.start); }; });
+      activatable(el, async () => { await openMeeting(el.dataset.id); jumpToTime(+el.dataset.start); }));
   } catch (e) { $("ask-answer").innerHTML = `<div class="answer">${e.message}</div>`; }
 };
 $("ask-q").addEventListener("keydown", (e) => { if (e.key === "Enter") $("btn-ask-all").click(); });
@@ -740,7 +751,7 @@ $("search").addEventListener("input", (e) => {
       const ss = String(Math.floor(h.start % 60)).padStart(2, "0");
       div.innerHTML = `<b>${escapeHtml(h.title)}</b> · ${h.speaker} ${mm}:${ss}<br>` +
         escapeHtml(h.snippet).replace(/\[/g, "<mark>").replace(/\]/g, "</mark>");
-      div.onclick = async () => { await openMeeting(h.meeting_id); jumpToTime(h.start); };
+      activatable(div, async () => { await openMeeting(h.meeting_id); jumpToTime(h.start); });
       box.appendChild(div);
     }
     if (!hits.length) box.innerHTML = `<p class="muted">No matches.</p>`;
