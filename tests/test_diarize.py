@@ -4,8 +4,48 @@ import numpy as np
 import pytest
 
 pytest.importorskip("sklearn")
+pytest.importorskip("soundfile")
 
-from app.pipeline.diarize import DEFAULT_DIAR_THRESHOLD, labels_from_embeddings  # noqa: E402
+from app.models import Segment  # noqa: E402
+from app.pipeline.diarize import DEFAULT_DIAR_THRESHOLD, diarize_segments, labels_from_embeddings  # noqa: E402
+
+
+def test_diarize_segments_slices_by_timeline(tmp_path, monkeypatch):
+    """Cover the key-free diarize_segments orchestration (the timeline-alignment
+    fix) with a mocked Resemblyzer: two time regions with distinct audio must
+    yield distinct speakers (correct per-segment slicing), and a sub-min segment
+    inherits the previous label."""
+    import sys
+    import types
+
+    import soundfile as sf
+    sr = 16000
+    audio = np.concatenate([np.full(sr * 2, 0.5, np.float32),    # 0-2s "A"
+                            np.full(sr * 2, -0.5, np.float32)])   # 2-4s "B"
+    wav = tmp_path / "two.wav"
+    sf.write(str(wav), audio, sr)
+
+    fake = types.ModuleType("resemblyzer")
+
+    class FakeEnc:
+        def __init__(self, verbose=False):
+            pass
+
+        def embed_utterance(self, clip):
+            m = float(np.mean(clip))                 # region-distinct vector
+            return np.array([m, 1.0 - abs(m), 0.0])
+
+    fake.VoiceEncoder = FakeEnc
+    fake.preprocess_wav = lambda x, source_sr=None: np.asarray(x, dtype=np.float32)
+    monkeypatch.setitem(sys.modules, "resemblyzer", fake)
+
+    segs = [Segment(start=0, end=2, text="a", speaker="?", source="batch"),
+            Segment(start=2, end=4, text="b", speaker="?", source="batch"),
+            Segment(start=3.9, end=4.0, text="x", speaker="?", source="batch")]  # <0.6s
+    labels = diarize_segments(str(wav), segs, distance_threshold=0.4)
+    assert len(labels) == 3                          # one label per segment
+    assert labels[0] != labels[1]                    # distinct regions -> distinct speakers
+    assert labels[2] == labels[1]                    # too-short segment inherits previous
 
 
 def _v(*x):
