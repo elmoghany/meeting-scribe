@@ -26,16 +26,23 @@ def test_chapters_split_by_time_and_titled_by_keywords():
 
 def test_chapters_title_fallback_uses_salient_words_not_raw_text():
     # A section with no repeated phrase (every content word unique) must still get
-    # a clean keyword-ish title, not a raw mid-sentence dump.
+    # a clean keyword-ish title, not a raw mid-sentence dump. Words are GENUINELY
+    # distinct per segment (digits would be stripped by _tokenize, so don't use
+    # them) — no word repeats, so keywords() finds nothing and the salient-token
+    # fallback runs.
+    words = ("apple banana cherry date elder fig grape honey ivy jade kiwi lemon "
+             "mango nutmeg olive peach quince radish sage thyme ube violet walnut "
+             "yam zest amber brass coral").split()
     segs = [Segment(start=i * 30, end=i * 30 + 25,
-                    text=f"unique{i} topic{i} matter{i}", speaker="Me", source="batch")
-            for i in range(8)]   # 8 * 30s = 240s, all-distinct words
+                    text=" ".join(words[i * 3:i * 3 + 3]), speaker="Me", source="batch")
+            for i in range(8)]   # 8 * 30s = 240s, every word unique
     chs = notes.chapters(segs, target_sec=120)
     assert len(chs) >= 2
     for c in chs:
         assert c["title"] and c["title"] != "…"
-        # title should be made of word-tokens (no leading punctuation / stopword soup)
-        assert c["title"][0].isalnum()
+        assert c["title"][0].isalnum()      # salient words, not punctuation/raw dump
+        # the title words come from the chapter's own (unique) vocabulary
+        assert any(w.capitalize() in c["title"] or w in c["title"].lower() for w in words)
 
 
 def test_chapters_empty_or_tiny_input():
