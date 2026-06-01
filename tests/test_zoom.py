@@ -108,3 +108,29 @@ def test_zoom_access_token_refreshes_when_expired(monkeypatch):
         if tok_path.exists():
             tok_path.unlink()
         config.get_settings.cache_clear()
+
+
+def test_zoom_server_to_server_token(monkeypatch):
+    monkeypatch.setenv("ZOOM_CLIENT_ID", "cid")
+    monkeypatch.setenv("ZOOM_CLIENT_SECRET", "sec")
+    monkeypatch.setenv("ZOOM_ACCOUNT_ID", "acct123")     # server-to-server mode
+    config.get_settings.cache_clear()
+    tok_path = zoom._token_path()
+    try:
+        if tok_path.exists():
+            tok_path.unlink()                            # no cached token -> mint fresh
+
+        class _R:
+            def raise_for_status(self):
+                pass
+
+            def json(self):
+                return {"access_token": "S2S", "expires_in": 3600}
+
+        monkeypatch.setattr(httpx, "post", lambda *a, **k: _R())
+        assert zoom.connected() is True                  # configured S2S is "connected"
+        assert zoom._access_token() == "S2S"             # minted via account_credentials
+    finally:
+        if tok_path.exists():
+            tok_path.unlink()
+        config.get_settings.cache_clear()
