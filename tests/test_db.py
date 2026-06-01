@@ -109,6 +109,18 @@ def test_segments_and_fts_search():
     assert "budget" in " ".join(h["snippet"].lower() for h in hits)
 
 
+def test_search_is_stemmed_and_highlights_inflection():
+    mid = _mk("m-stem")
+    db.add_segments(mid, [Segment(start=0, end=3, source="batch", speaker="A",
+                                  text="We approved several new engineering hires today.")])
+    # a query in a different inflection still matches (porter stemming)
+    for q in ("hire", "hiring", "approve", "engineer"):
+        assert any(h["meeting_id"] == mid for h in db.search(q)), q
+    # and the snippet highlights the actual inflected word present in the text
+    snip = next(h["snippet"] for h in db.search("hire") if h["meeting_id"] == mid)
+    assert "[hires]" in snip
+
+
 def test_update_segment_edits_text_and_fts():
     mid = _mk("m-edit")
     sid = db.add_segment(mid, Segment(start=0, end=2, text="the kroud was loud",
