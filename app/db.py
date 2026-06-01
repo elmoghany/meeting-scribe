@@ -210,13 +210,20 @@ def meeting_stats() -> dict:
             "SELECT meeting_id, source, COUNT(*) n,"
             " SUM(LENGTH(text) - LENGTH(REPLACE(text, ' ', '')) + 1) w"
             " FROM segments GROUP BY meeting_id, source").fetchall()
+        acts = c.execute(
+            "SELECT meeting_id, COUNT(*) n FROM action_items"
+            " WHERE done = 0 GROUP BY meeting_id").fetchall()
+    open_by = {r["meeting_id"]: r["n"] for r in acts}
     by: dict[str, dict] = {}
     for r in rows:
         by.setdefault(r["meeting_id"], {})[r["source"]] = (r["n"], int(r["w"] or 0))
     out = {}
     for mid, srcs in by.items():
         n, w = srcs.get("batch") or srcs.get("live") or (0, 0)
-        out[mid] = {"segments": n, "words": w}
+        out[mid] = {"segments": n, "words": w, "open_actions": open_by.get(mid, 0)}
+    for mid, n in open_by.items():           # meetings with open items but no segments
+        if mid not in out:
+            out[mid] = {"segments": 0, "words": 0, "open_actions": n}
     return out
 
 

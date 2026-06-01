@@ -11,6 +11,24 @@ def _mk(meeting_id="m-test"):
     return meeting_id
 
 
+def test_meeting_stats_counts_open_actions():
+    mid = _mk("m-openactions")
+    db.add_segments(mid, [Segment(start=0, end=1, text="hi there", speaker="Me",
+                                  source="batch")])
+    db.save_action_items(mid, [
+        ActionItem(text="send report", done=False),
+        ActionItem(text="book room", done=False),
+        ActionItem(text="already done", done=True),   # excluded from open count
+    ])
+    s = db.meeting_stats()[mid]
+    assert s["open_actions"] == 2          # two not-done
+    assert s["segments"] == 1
+    # a meeting with no action items reports 0, not missing
+    other = _mk("m-noactions")
+    db.add_segments(other, [Segment(start=0, end=1, text="x", speaker="Me", source="batch")])
+    assert db.meeting_stats()[other]["open_actions"] == 0
+
+
 def test_meeting_crud():
     mid = _mk("m-crud")
     got = db.get_meeting(mid)

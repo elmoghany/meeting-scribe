@@ -418,10 +418,12 @@ async function refreshMeetings() {
     const mins = m.duration_sec ? `${Math.round(m.duration_sec / 60)} min` : "";
     const words = m.stats && m.stats.words ? `${m.stats.words} words` : "";
     const stat = [mins, words].filter(Boolean).join(" · ");
+    const openA = m.stats && m.stats.open_actions
+      ? ` <span class="badge open-actions" title="open action items">☑ ${m.stats.open_actions}</span>` : "";
     const check = selectMode
       ? `<input type="checkbox" class="ml-check"${selectedIds.has(m.id) ? " checked" : ""}>`
       : "";
-    li.innerHTML = `<div class="mtitle">${check}${escapeHtml(m.title)}</div>` +
+    li.innerHTML = `<div class="mtitle">${check}${escapeHtml(m.title)}${openA}</div>` +
       `<div class="muted">${when} · <span class="badge">${m.platform}</span> ` +
       `<span class="badge">${m.status}</span> ${tagHtml}</div>` +
       (stat ? `<div class="muted mstat">${stat}</div>` : "");
