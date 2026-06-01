@@ -337,6 +337,25 @@ def test_named_assignment_action_items_with_owner():
     assert "John" in by_owner                       # "John to update" -> owner John, not Alice
 
 
+def test_decision_recall_across_phrasings():
+    def decs(text):
+        return notes.extractive_summary(text).decisions
+    assert decs("The team chose React over Vue.")
+    assert decs("We are going with the vendor proposal.")
+    assert decs("It was decided that we ship on Friday.")
+    assert decs("Let us go with the blue theme.")
+    assert decs("We settled on a weekly cadence.")
+
+
+def test_decision_rejects_unmade_decisions():
+    # "make a decision" / "decision is pending" are NOT decisions (precision)
+    def decs(text):
+        return notes.extractive_summary(text).decisions
+    assert decs("We need to make a decision eventually.") == []
+    assert decs("The decision is still pending review.") == []
+    assert decs("I decided to grab lunch earlier today.") == []   # personal, not "we"
+
+
 def test_due_date_extraction_phrasings():
     # the deadline phrasings that show up in real meetings
     def due(text):

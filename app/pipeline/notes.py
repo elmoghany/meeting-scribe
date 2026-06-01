@@ -58,8 +58,18 @@ _ACTION_CUES = re.compile(
     re.IGNORECASE,
 )
 _DECISION_CUES = re.compile(
-    r"\b(we (decided|agreed|will go with|chose)|decision|agreed to|let'?s go with|"
-    r"finaliz(e|ed)|we'?re going with|approved)\b",
+    r"\b("
+    # subject + decision verb ("the team chose …", "we decided …")
+    r"(?:we|they|the team|the group|everyone) (?:decided|agreed|chose|opted)|"
+    r"(?:it was|was|were) decided|"                      # passive "it was decided"
+    # the noun "decision" only counts in a made-decision context, NOT
+    # "we need to make a decision" / "the decision is pending"
+    r"made (?:a|the|our|this) decision|decision (?:is|was) to|"
+    r"agreed to|"
+    r"(?:we(?:'?ll| will)|let'?s|let us) go with|"       # "we'll/let's go with"
+    r"(?:we'?re|we are|we'?ll be) going with|"           # "we are going with"
+    r"settled on|opted for|"
+    r"finaliz(?:e|ed)|approved)\b",
     re.IGNORECASE,
 )
 # Hedged / speculative framing — a musing, not a commitment.
