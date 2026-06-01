@@ -81,6 +81,45 @@ def test_speaker_embeddings_per_label(tmp_path, monkeypatch):
     assert len(embs["Me"]) == 3                       # a d-vector
 
 
+def test_label_speakers_falls_back_when_pyannote_unavailable(tmp_path, monkeypatch):
+    """pyannote configured but unavailable (gated/no token) must degrade to the
+    key-free path, not crash."""
+    import sys
+    import types
+
+    import soundfile as sf
+    from app import config
+    from app.pipeline import diarize
+    sr = 16000
+    sf.write(str(tmp_path / "m.wav"), np.full(sr * 2, 0.4, np.float32), sr)
+
+    monkeypatch.setenv("MEETINGSCRIBE_DIARIZER", "pyannote")
+    config.get_settings.cache_clear()
+
+    def _raise(*a, **k):
+        raise RuntimeError("pyannote weights gated")
+    monkeypatch.setattr(diarize, "diarize_pyannote", _raise)
+
+    fake = types.ModuleType("resemblyzer")
+
+    class FakeEnc:
+        def __init__(self, verbose=False):
+            pass
+
+        def embed_utterance(self, clip):
+            return np.array([float(np.mean(clip)), 0.0, 0.0])
+
+    fake.VoiceEncoder = FakeEnc
+    fake.preprocess_wav = lambda x, source_sr=None: np.asarray(x, dtype=np.float32)
+    monkeypatch.setitem(sys.modules, "resemblyzer", fake)
+    try:
+        segs = [Segment(start=0, end=2, text="a", speaker="Unknown", source="batch")]
+        out = diarize.label_speakers(str(tmp_path / "m.wav"), segs)
+        assert out[0].speaker.startswith("Speaker")   # degraded to key-free, labeled
+    finally:
+        config.get_settings.cache_clear()
+
+
 def test_mic_activity_detects_speech_regions(tmp_path):
     """The mic energy-VAD that anchors 'Me': loud frames -> speech Turns,
     silence ignored."""
