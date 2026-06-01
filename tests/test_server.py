@@ -61,6 +61,78 @@ def test_empty_search_returns_empty_list():
         assert c.get("/api/search", params={"q": "   "}).json() == []
 
 
+class _FakeSession:
+    """Stand-in for MeetingSession — no audio devices, no ASR threads."""
+    raise_on_start = False
+
+    def __init__(self, title, platform, emit, capture_mic=True,
+                 capture_system=True, language=None):
+        self.meeting = Meeting(id="rec-ctl", title=title, platform=platform,
+                               started_at=time.time(), status="recording")
+        self.is_recording = False
+
+    def start(self):
+        if _FakeSession.raise_on_start:
+            raise RuntimeError("device busy")
+        self.is_recording = True
+        return self.meeting
+
+    def stop(self):
+        self.is_recording = False
+        return {"meeting_id": self.meeting.id, "audio_dir": "/tmp/rec-ctl"}
+
+
+def _patch_recording(monkeypatch):
+    from app.server import main
+    monkeypatch.setattr(main, "MeetingSession", _FakeSession)
+    monkeypatch.setattr(main, "run_batch", lambda *a, **k: {"segments": 0})
+    monkeypatch.setattr(main, "_session", None)
+    _FakeSession.raise_on_start = False
+
+
+def test_record_start_conflict_returns_409(monkeypatch):
+    _patch_recording(monkeypatch)
+    from app.server import main
+    with TestClient(app) as c:
+        r1 = c.post("/api/record/start", json={"title": "Standup", "platform": "meet"})
+        assert r1.status_code == 200 and r1.json()["title"] == "Standup"
+        assert c.get("/api/status").json()["recording"] is True
+        r2 = c.post("/api/record/start", json={"title": "Other", "platform": "meet"})
+        assert r2.status_code == 409                     # already recording -> conflict
+    monkeypatch.setattr(main, "_session", None)
+
+
+def test_record_start_failure_clears_session(monkeypatch):
+    # If capture fails to start, _session MUST be reset to None — otherwise the
+    # dashboard is permanently stuck reporting "already recording".
+    _patch_recording(monkeypatch)
+    _FakeSession.raise_on_start = True
+    from app.server import main
+    with TestClient(app) as c:
+        r = c.post("/api/record/start", json={"title": "x", "platform": "other"})
+        assert r.status_code == 500                      # surfaced as server error
+        assert main._session is None                     # cleaned up, not wedged
+        assert c.get("/api/status").json()["recording"] is False
+
+
+def test_record_stop_without_active_returns_409(monkeypatch):
+    _patch_recording(monkeypatch)
+    with TestClient(app) as c:
+        assert c.post("/api/record/stop").status_code == 409   # nothing to stop
+
+
+def test_record_start_then_stop_processes(monkeypatch):
+    _patch_recording(monkeypatch)
+    from app.server import main
+    with TestClient(app) as c:
+        c.post("/api/record/start", json={"title": "S", "platform": "meet"})
+        r = c.post("/api/record/stop")
+        assert r.status_code == 200
+        assert r.json() == {"meeting_id": "rec-ctl", "status": "processing"}
+        assert c.get("/api/status").json()["recording"] is False   # session cleared
+    monkeypatch.setattr(main, "_session", None)
+
+
 def test_slug_makes_friendly_filenames():
     from app.server.main import _slug
     assert _slug("Q3 Planning / Roadmap!") == "Q3-Planning-Roadmap"
