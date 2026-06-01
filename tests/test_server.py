@@ -267,6 +267,40 @@ def test_manual_action_item_add_and_toggle():
         assert tog["done"] is True                              # toggled complete
 
 
+def test_clip_and_highlight_reel_download_end_to_end():
+    import shutil
+
+    import pytest
+    np = pytest.importorskip("numpy")
+    sf = pytest.importorskip("soundfile")
+    from app.config import get_settings
+
+    mid = _mk("srv-clip-real", title="Clip Source")
+    db.add_segments(mid, [Segment(start=0, end=2, text="hello there everyone",
+                                  speaker="Me", source="batch")])
+    seg = db.get_segments(mid, source="batch")[0]
+    rec = get_settings().recordings_dir / mid
+    rec.mkdir(parents=True, exist_ok=True)
+    sf.write(rec / "system.wav", (np.ones(16000 * 3) * 0.5).astype(np.float32), 16000)  # 3s
+    try:
+        with TestClient(app) as c:
+            clip = c.get(f"/api/meetings/{mid}/clip", params={"start": 0, "end": 1})
+            assert clip.status_code == 200
+            assert clip.headers["content-type"] == "audio/wav"
+            assert "Clip-Source-clip-0s" in clip.headers.get("content-disposition", "")
+            assert clip.content[:4] == b"RIFF"                 # a real WAV came back
+
+            # a range entirely past the audio -> 400 invalid
+            bad = c.get(f"/api/meetings/{mid}/clip", params={"start": 5, "end": 5})
+            assert bad.status_code == 400
+
+            db.toggle_highlight(mid, seg.id)                   # star the line
+            reel = c.get(f"/api/meetings/{mid}/highlight-reel")
+            assert reel.status_code == 200 and reel.content[:4] == b"RIFF"
+    finally:
+        shutil.rmtree(rec, ignore_errors=True)
+
+
 def test_highlight_reel_without_highlights_404s():
     mid = _mk("srv-no-highlights")
     db.add_segments(mid, [Segment(start=0, end=2, text="hello", speaker="Me", source="batch")])
