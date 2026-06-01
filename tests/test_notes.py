@@ -337,6 +337,25 @@ def test_extractive_backend_summarize_and_chat():
     assert "budget" in ans.lower()
 
 
+def test_request_questions_become_assigned_action_items():
+    # "Can you send the deck?" is a request (assignment), not a rhetorical question
+    segs = [_seg("Can you send me the deck by Friday?", "Bob"),
+            _seg("Could someone update the roadmap doc?", "Alice")]
+    items = notes.extract_action_items(segs)
+    assert len(items) == 2
+    assert all(a.owner == "(assigned)" for a in items)      # directed at someone
+    assert any(a.due == "by Friday" for a in items)         # deadline still parsed
+
+
+def test_rhetorical_questions_are_not_action_items():
+    # a task verb is required, so cognition-verb / non-person-subject questions
+    # stay rejected (no false positives from the request rule)
+    for q in ["Can you believe the numbers?", "Could that be the root cause?",
+              "Would that even work?", "Can you imagine if it failed?",
+              "What do you think about the plan?", "Can you hear me okay?"]:
+        assert notes.extract_action_items([_seg(q)]) == [], q
+
+
 def test_named_assignment_action_items_with_owner():
     # "<Name> will <task-verb>" is the canonical assignment phrasing; detect it
     # and attribute the owner to the named person, not the speaker.

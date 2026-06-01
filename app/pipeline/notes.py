@@ -72,6 +72,18 @@ _DECISION_CUES = re.compile(
     r"finaliz(?:e|ed)|approved)\b",
     re.IGNORECASE,
 )
+# A polite request that's really an assignment: "can you send …", "could someone
+# review …". A task verb is REQUIRED so rhetorical questions ("can you believe …",
+# "would that even work?", "can you imagine …") — which use cognition verbs or a
+# non-person subject — are NOT matched.
+_REQUEST = re.compile(
+    r"\b(?:can|could|would|will)\s+(?:you|someone|somebody|we)\s+(?:please\s+)?"
+    r"(?:send|share|email|prepare|review|update|create|schedule|draft|check|fix|"
+    r"handle|coordinate|organize|write|build|ship|deliver|finish|complete|contact|"
+    r"investigate|compile|escalate|book|follow|reach|look|set|put|get|pull|add|"
+    r"sync|confirm|verify|test|deploy|merge|sign|own|lead|drive|make)\b",
+    re.IGNORECASE,
+)
 # Hedged / speculative framing — a musing, not a commitment.
 _HEDGE = re.compile(
     r"\b(maybe|perhaps|probably|i think|i guess|i feel like|i suspect|i mean|"
@@ -349,7 +361,7 @@ def extract_action_items(segments: list[Segment]) -> list[ActionItem]:
     seen: set[str] = set()
     for seg in segments:
         for sent in _sentences(seg.text):
-            if not _ACTION_CUES.search(sent):
+            if not (_ACTION_CUES.search(sent) or _REQUEST.search(sent)):
                 continue
             if not _is_actionable(sent):
                 continue
@@ -374,8 +386,9 @@ def _is_actionable(sent: str) -> bool:
     "I'll maybe send it Friday" still counts.
     """
     s = sent.strip()
-    if s.endswith("?"):
-        return False                       # questions aren't action items
+    if s.endswith("?") and not _REQUEST.search(s):
+        return False                       # questions aren't action items — unless
+                                           # they're a request ("can you send the …?")
     if _SPEECH_ACT.search(s):
         return False                       # "I'll say/admit/argue …" is talk, not a task
     if _TRANSITION.search(s):
@@ -411,8 +424,8 @@ def _infer_owner(sentence: str, speaker: str) -> str | None:
     m = _NAMED_ASSIGN.search(sentence)
     if m and m.group(1).lower() not in _PRONOUN_SUBJ:
         return m.group(1)                  # "Sarah will handle …" -> Sarah
-    if re.search(r"\byou (should|need to|have to|must|will)\b", low):
-        return "(assigned)"
+    if re.search(r"\byou (should|need to|have to|must|will)\b", low) or _REQUEST.search(sentence):
+        return "(assigned)"                # "you should …" / "can you send …?"
     return speaker if speaker not in ("Unknown",) else None
 
 
