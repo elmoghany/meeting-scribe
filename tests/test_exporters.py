@@ -22,6 +22,16 @@ def test_vtt_format():
     assert "<v Me>Hello everyone." in vtt
 
 
+def test_vtt_escapes_markup_chars_in_cue_and_speaker():
+    # WebVTT treats & < > as markup; raw transcript chars must be escaped or the
+    # browser parser drops/mangles the cue.
+    segs = [Segment(start=0, end=2, text="use <b> & 3 > 2 here", speaker="A & B", source="batch")]
+    vtt = exporters.to_vtt(segs)
+    assert "<v A &amp; B>" in vtt                         # speaker name escaped inside voice tag
+    assert "use &lt;b&gt; &amp; 3 &gt; 2 here" in vtt     # cue body escaped
+    assert "<b>" not in vtt and " & " not in vtt          # no raw markup leaks
+
+
 def test_srt_splits_long_cues_for_readability():
     from app.models import Segment as Seg
     # one 24s paragraph segment with no sentence breaks -> even-split into cues

@@ -69,12 +69,17 @@ def to_srt(segments: list[Segment]) -> str:
 
 
 def to_vtt(segments: list[Segment]) -> str:
-    """WebVTT subtitles (browser-native, used by the audio player)."""
+    """WebVTT subtitles (browser-native, used by the audio player).
+
+    Cue text and the voice-tag speaker name are escaped: WebVTT treats ``&``,
+    ``<`` and ``>`` as markup, so raw transcript text like ``a <b> & c`` would
+    otherwise produce spec-invalid cues that the browser parser drops or mangles.
+    """
     out = ["WEBVTT", ""]
     for s in _cues(segments):
         out.append(f"{_ts(s.start, '.')} --> {_ts(s.end, '.')}")
-        who = f"<v {s.speaker}>" if s.speaker and s.speaker != "Unknown" else ""
-        out.append(f"{who}{s.text.strip()}")
+        who = f"<v {_esc(s.speaker)}>" if s.speaker and s.speaker != "Unknown" else ""
+        out.append(f"{who}{_esc(s.text.strip())}")
         out.append("")
     return "\n".join(out)
 
