@@ -320,3 +320,13 @@ healthy (e.g. a 4-person clip resolved to 4 speakers). One residual: a clip of
 continuous Spanish speech still had a single **raw** 54s Whisper segment — the cap
 stops *merging* but cannot split an already-long segment without word-level
 timestamps; a rare artifact, left as-is rather than splitting text imprecisely.
+(That residual was later closed by `_split_long`, which divides an overlong raw
+segment into ~equal time chunks.)
+
+**Capstone (2026-05-29).** A final full-pipeline run over the two
+previously-problematic clips confirmed all fixes integrate cleanly: the Spanish
+clip (c003) — once a 200-word overview + a giant "al final" false decision — now
+gives a 40-word overview, **0 false decisions**, max segment 30s; the panel clip
+(c007) — once a "final pieces" false decision — gives a coherent 10-word overview,
+**0 false decisions**. No regression across merge-cap, split, soft-wrap, and the
+decision/speech-act/transition/filler precision filters.
