@@ -5,7 +5,9 @@ import pytest
 pytest.importorskip("soundfile")
 import soundfile as sf  # noqa: E402
 
-from app.pipeline.audiomix import export_highlight_reel, extract_clip
+from app.pipeline.audiomix import (
+    ensure_meeting_wav, export_highlight_reel, extract_clip,
+)
 
 
 def _make_wav(path, seconds, sr=16000, val=0.5):
@@ -51,3 +53,32 @@ def test_highlight_reel_concatenates(tmp_path):
 def test_highlight_reel_no_spans(tmp_path):
     _make_wav(tmp_path / "system.wav", 5)
     assert export_highlight_reel(tmp_path, [], tmp_path / "r.wav") is None
+
+
+def test_ensure_meeting_wav_none_without_sources(tmp_path):
+    assert ensure_meeting_wav(tmp_path) is None
+
+
+def test_ensure_meeting_wav_caches_then_remixes_when_source_newer(tmp_path):
+    import os
+    import time
+
+    _make_wav(tmp_path / "mic.wav", 1, val=0.5)
+    _make_wav(tmp_path / "system.wav", 1, val=0.3)
+    out = ensure_meeting_wav(tmp_path)
+    assert out and out.exists()
+    c1 = sf.read(str(out))[0].copy()
+
+    # mark the cache as fresh (newer than both sources) -> reused, content stable
+    t = time.time()
+    os.utime(tmp_path / "mic.wav", (t, t))
+    os.utime(tmp_path / "system.wav", (t, t))
+    os.utime(out, (t + 10, t + 10))
+    c2 = sf.read(str(ensure_meeting_wav(tmp_path)))[0]
+    assert np.array_equal(c1, c2)  # cache hit — not re-mixed
+
+    # change a source AND stamp it newer than the cache -> must re-mix
+    _make_wav(tmp_path / "mic.wav", 1, val=0.9)
+    os.utime(tmp_path / "mic.wav", (t + 20, t + 20))
+    c3 = sf.read(str(ensure_meeting_wav(tmp_path)))[0]
+    assert not np.array_equal(c2, c3)  # stale mix regenerated from new source
