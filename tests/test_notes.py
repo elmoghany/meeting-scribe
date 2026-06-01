@@ -45,6 +45,15 @@ def test_chapters_title_fallback_uses_salient_words_not_raw_text():
         assert any(w.capitalize() in c["title"] or w in c["title"].lower() for w in words)
 
 
+def test_soft_wrap_keeps_trailing_remainder():
+    # 50 words, cap 40 -> [40, 10]; the trailing chunk must not be dropped
+    s = " ".join(f"w{i}" for i in range(50))
+    pieces = notes._soft_wrap(s, max_words=40)
+    assert len(pieces) == 2
+    assert " ".join(pieces).split() == s.split()      # every word preserved
+    assert len(pieces[-1].split()) == 10              # trailing remainder kept
+
+
 def test_chapters_empty_or_tiny_input():
     assert notes.chapters([]) == []
     assert notes.chapters([Segment(start=0, end=2, text="hi", speaker="Me", source="batch")]) == []
