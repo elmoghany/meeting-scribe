@@ -337,6 +337,24 @@ def test_named_assignment_action_items_with_owner():
     assert "John" in by_owner                       # "John to update" -> owner John, not Alice
 
 
+def test_chapters_merge_adjacent_same_title():
+    # one topic spilling across time buckets must not produce two consecutive
+    # chapters with the identical title.
+    segs = []
+    for i in range(6):
+        segs.append(Segment(start=i * 60, end=i * 60 + 50, source="batch", speaker="A",
+                            text="budget revenue pricing cloud spend forecast numbers"))
+    for i in range(6, 12):
+        segs.append(Segment(start=i * 60, end=i * 60 + 50, source="batch", speaker="B",
+                            text="hiring candidate interview recruiting headcount onboarding"))
+    ch = notes.chapters(segs)
+    titles = [c["title"] for c in ch]
+    assert not any(titles[i] == titles[i + 1] for i in range(len(titles) - 1))  # no dupes
+    assert len(ch) >= 2                                  # still distinct topics
+    # merged chapter spans contiguous time (end of one == start region of next)
+    assert all(ch[i]["end"] <= ch[i + 1]["start"] for i in range(len(ch) - 1))
+
+
 def test_decision_recall_across_phrasings():
     def decs(text):
         return notes.extractive_summary(text).decisions

@@ -327,7 +327,16 @@ def chapters(segments: list[Segment], target_sec: float = 300.0,
         title = title[:1].upper() + title[1:]
         out.append({"start": round(g[0].start, 2), "end": round(g[-1].end, 2),
                     "title": title})
-    return out
+    # Time-bucketing can split a single topic across adjacent buckets, yielding
+    # consecutive chapters with the identical keyword title. Merge those into one
+    # so the chapter list reads as distinct topics, not redundant repeats.
+    merged: list[dict] = []
+    for c in out:
+        if merged and merged[-1]["title"] == c["title"]:
+            merged[-1]["end"] = c["end"]      # extend the existing topic
+        else:
+            merged.append(c)
+    return merged
 
 
 def extract_action_items(segments: list[Segment]) -> list[ActionItem]:
