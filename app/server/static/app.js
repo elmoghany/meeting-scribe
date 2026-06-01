@@ -540,7 +540,8 @@ async function openMeeting(id) {
     const li = document.createElement("li");
     const cb = document.createElement("input");
     cb.type = "checkbox"; cb.checked = a.done;
-    cb.onchange = async () => { await post(`/api/action/${a.id}?done=${cb.checked}`); renderAllActions(); };
+    cb.onchange = async () => { await post(`/api/action/${a.id}?done=${cb.checked}`);
+      renderAllActions(); refreshMeetings(); };   // keep the sidebar open-actions badge fresh
     const meta = [a.owner, a.due].filter(Boolean).join(" · ");
     const txt = document.createElement("span"); txt.className = "ai-edit"; txt.textContent = a.text;
     txt.title = "Double-click to edit"; txt.style.cursor = "text";
@@ -743,7 +744,8 @@ async function renderAllActions() {
     row.className = "ai-row";
     const cb = document.createElement("input");
     cb.type = "checkbox"; cb.checked = !!a.done;
-    cb.onchange = async () => { await post(`/api/action/${a.id}?done=${cb.checked}`); renderAllActions(); };
+    cb.onchange = async () => { await post(`/api/action/${a.id}?done=${cb.checked}`);
+      renderAllActions(); refreshMeetings(); };   // sidebar badge reflects the new open count
     const txt = document.createElement("span");
     txt.className = "ai-txt"; txt.textContent = a.text;
     if (a.done) txt.style.textDecoration = "line-through";
