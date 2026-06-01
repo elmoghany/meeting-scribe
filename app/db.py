@@ -96,7 +96,8 @@ CREATE TABLE IF NOT EXISTS meeting_speaker_embeddings (
 -- Full-text search over transcript text, kept in sync via triggers.
 CREATE VIRTUAL TABLE IF NOT EXISTS segments_fts USING fts5(
     text, speaker UNINDEXED, meeting_id UNINDEXED,
-    content='segments', content_rowid='id'
+    content='segments', content_rowid='id',
+    tokenize = 'porter unicode61'        -- stem so "hire" finds "hiring/hired"
 );
 CREATE TRIGGER IF NOT EXISTS segments_ai AFTER INSERT ON segments BEGIN
     INSERT INTO segments_fts(rowid, text, speaker, meeting_id)
@@ -139,6 +140,20 @@ def _connect() -> sqlite3.Connection:
         if "source" not in acols:
             _conn.execute(
                 "ALTER TABLE action_items ADD COLUMN source TEXT NOT NULL DEFAULT 'auto'")
+        # Upgrade the FTS index to a stemming tokenizer for DBs created before it
+        # was added. segments_fts is external-content (content='segments'), so a
+        # rebuild re-derives the index from the segments table — no transcript
+        # data is touched. Idempotent: only rebuilds when not already 'porter'.
+        fts_row = _conn.execute(
+            "SELECT sql FROM sqlite_master WHERE name='segments_fts'").fetchone()
+        if fts_row and "porter" not in (fts_row[0] or ""):
+            _conn.execute("DROP TABLE segments_fts")
+            _conn.execute(
+                "CREATE VIRTUAL TABLE segments_fts USING fts5("
+                "text, speaker UNINDEXED, meeting_id UNINDEXED, "
+                "content='segments', content_rowid='id', "
+                "tokenize = 'porter unicode61')")
+            _conn.execute("INSERT INTO segments_fts(segments_fts) VALUES('rebuild')")
         _conn.commit()
     return _conn
 

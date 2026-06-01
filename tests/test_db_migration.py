@@ -45,6 +45,46 @@ def _seed_old_db(path):
     con.close()
 
 
+def test_fts_tokenizer_migrates_to_stemming(tmp_path, monkeypatch):
+    # Seed a DB whose FTS uses the OLD (non-stemming) tokenizer, then verify
+    # _connect() upgrades it to 'porter' in place, keeps the data, and enables
+    # stemmed search ("hire" finds "hires").
+    p = tmp_path / "meetingscribe.db"
+    con = sqlite3.connect(str(p))
+    con.executescript(_OLD_SCHEMA)
+    con.executescript(
+        "CREATE VIRTUAL TABLE segments_fts USING fts5("
+        "text, speaker UNINDEXED, meeting_id UNINDEXED, "
+        "content='segments', content_rowid='id');")        # no tokenize -> unicode61
+    con.execute("INSERT INTO meetings (id,title,platform,started_at) "
+                "VALUES ('m1','M','meet',1.0)")
+    con.execute("INSERT INTO segments (meeting_id,start,end,speaker,text,source) "
+                "VALUES ('m1',0,1,'A','We approved new engineering hires.','batch')")
+    con.execute("INSERT INTO segments_fts(rowid,text,speaker,meeting_id) "
+                "SELECT id,text,speaker,meeting_id FROM segments")
+    con.commit()
+    con.close()
+
+    s = db.get_settings()
+    monkeypatch.setattr(s, "data_dir", tmp_path)
+    db.reset_connection()
+    try:
+        conn = db._connect()                               # runs the FTS migration
+        fts_sql = conn.execute(
+            "SELECT sql FROM sqlite_master WHERE name='segments_fts'").fetchone()[0]
+        assert "porter" in fts_sql                         # tokenizer upgraded
+        assert db.get_segments("m1")[0].text.endswith("hires.")   # data survived
+        hits = db.search("hire")                           # stem 'hire' matches 'hires'
+        assert any(h["meeting_id"] == "m1" for h in hits)
+        # idempotent: a second connect doesn't re-migrate or error
+        db.reset_connection()
+        db._connect()
+        assert "porter" in db._connect().execute(
+            "SELECT sql FROM sqlite_master WHERE name='segments_fts'").fetchone()[0]
+    finally:
+        db.reset_connection()
+
+
 def test_old_db_migrates_in_place_and_keeps_data(tmp_path, monkeypatch):
     _seed_old_db(tmp_path / "meetingscribe.db")
     s = db.get_settings()
