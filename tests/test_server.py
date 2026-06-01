@@ -416,6 +416,31 @@ def test_record_start_failure_clears_session(monkeypatch):
         assert c.get("/api/status").json()["recording"] is False
 
 
+def test_reprocess_runs_batch_and_reanchors_annotations(monkeypatch):
+    from app.server import main
+    mid = _mk("srv-reproc")
+    db.add_segments(mid, [Segment(start=0, end=2, text="hi there", speaker="Me", source="batch")])
+    seg = db.get_segments(mid, source="batch")[0]
+    db.add_annotation(mid, kind="comment", text="keep me", segment_id=seg.id)
+
+    events = []
+    monkeypatch.setattr(main, "_emit", events.append)
+    reanchored = {}
+    real_reanchor = db.reanchor_annotations
+    monkeypatch.setattr(db, "reanchor_annotations",
+                        lambda m, anchors: reanchored.update(m=m, n=len(anchors)) or
+                        real_reanchor(m, anchors))
+    monkeypatch.setattr(main, "run_batch",
+                        lambda m, audio_dir, progress=None: {"segments": 1})
+
+    with TestClient(app) as c:
+        r = c.post(f"/api/meetings/{mid}/reprocess")
+        assert r.json() == {"meeting_id": mid, "status": "processing"}
+    _wait_for(events, "processed", "error")
+    assert any(e["type"] == "processed" for e in events)       # batch ran in the background
+    assert reanchored.get("n") == 1                            # the comment's anchor preserved
+
+
 def test_devices_endpoint_success_and_failure(monkeypatch):
     from app import capture
     monkeypatch.setattr(capture, "list_devices", lambda: [{"index": 0, "name": "Mic"}])
