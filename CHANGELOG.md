@@ -19,6 +19,14 @@ All notable changes to MeetingScribe are documented here. Format loosely follows
   faster-whisper runs on GPU where torch can't see it; CPU fallback on GPU init
   failure (incl. CTranslate2 rejecting float16 on older cards).
 - Action-item detection false positives ("we'll"→"well", "i'll"→"ill").
+- **Transcript over-merging.** A full-pipeline run on real clips showed
+  single-speaker stretches collapsing into giant segments (one clip became a
+  single 150s segment with no chapters / unusable subtitle cues). `merge_adjacent`
+  now caps merged length (30s) and splits any still-overlong segment, so
+  transcripts keep click-to-seek anchors. Found by end-to-end testing, not unit
+  tests — see `docs/VERIFICATION.md`.
+- **SRT/VTT readability.** Subtitle exports split long segments into ~8s cues
+  instead of showing a 30s paragraph on screen at once.
 
 ### Added
 - **Auto chapters** — jump-to-topic timeline, keyword-titled, click to seek;
