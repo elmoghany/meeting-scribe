@@ -90,6 +90,14 @@ def _cmd_verify_youtube(args):
 def _cmd_doctor(_args):
     s = get_settings()
     print(f"data_dir        : {s.data_dir}  (exists={s.data_dir.exists()})")
+    try:
+        import shutil
+        free_gb = shutil.disk_usage(s.data_dir if s.data_dir.exists()
+                                    else s.data_dir.anchor or ".").free / 1e9
+        warn = "  ⚠ low — recording needs free space" if free_gb < 1 else ""
+        print(f"disk_free       : {free_gb:.1f} GB{warn}")
+    except Exception as e:  # noqa: BLE001
+        print(f"disk_free       : ? ({type(e).__name__})")
     print(f"db_path         : {s.db_path}")
     try:
         from . import db as _db  # noqa: PLC0415

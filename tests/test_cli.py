@@ -55,3 +55,4 @@ def test_doctor_reports_default_diarizer_deps_and_ffmpeg(capsys):
     assert "ffmpeg" in out                              # external binary checked
     assert "hf_token" in out                            # token status shown
     assert "db " in out and "meeting" in out            # DB opens + migrates, count shown
+    assert "disk_free" in out and "GB" in out            # disk space reported (recording needs it)
