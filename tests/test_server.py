@@ -520,6 +520,39 @@ def test_record_stop_without_active_returns_409(monkeypatch):
         assert c.post("/api/record/stop").status_code == 409   # nothing to stop
 
 
+def test_record_stop_batch_failure_emits_error(monkeypatch):
+    from app.server import main
+    _patch_recording(monkeypatch)
+    events = []
+    monkeypatch.setattr(main, "_emit", events.append)
+
+    def boom(*a, **k):
+        raise RuntimeError("pipeline died")
+    monkeypatch.setattr(main, "run_batch", boom)
+    with TestClient(app) as c:
+        c.post("/api/record/start", json={"title": "S", "platform": "meet"})
+        c.post("/api/record/stop")
+    _wait_for(events, "processed", "error")
+    assert any(e["type"] == "error" and "pipeline died" in e["message"] for e in events)
+    monkeypatch.setattr(main, "_session", None)
+
+
+def test_reprocess_batch_failure_emits_error(monkeypatch):
+    from app.server import main
+    mid = _mk("srv-reproc-err")
+    db.add_segments(mid, [Segment(start=0, end=2, text="hi", speaker="Me", source="batch")])
+    events = []
+    monkeypatch.setattr(main, "_emit", events.append)
+
+    def boom(*a, **k):
+        raise RuntimeError("reprocess died")
+    monkeypatch.setattr(main, "run_batch", boom)
+    with TestClient(app) as c:
+        assert c.post(f"/api/meetings/{mid}/reprocess").json()["status"] == "processing"
+    _wait_for(events, "processed", "error")
+    assert any(e["type"] == "error" and "reprocess died" in e["message"] for e in events)
+
+
 def test_record_start_then_stop_processes(monkeypatch):
     _patch_recording(monkeypatch)
     from app.server import main
