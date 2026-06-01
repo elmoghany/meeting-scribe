@@ -167,6 +167,29 @@ with honest priorities. Updated as runs accumulate.
   action-item recall preserved (precision+recall corpus test). The survivor
   ("we'll start with X joining…") is real-`we'll` narration — only the LLM
   backend can tell it from a real "we'll ship the migration" task.
+- **Extraction/analytics audit pass (2026-05-31).** Running the pipeline on
+  realistic transcripts and reading the output surfaced a batch of recall/
+  precision gaps, all fixed with positive + negative tests:
+  - *Action items*: added **named-assignment** ("Sarah will handle …" → owner
+    Sarah, not the speaker) and **request** ("Can you review the PR?" → assigned)
+    detection, both gated on a task verb so predictions ("this will help") and
+    rhetorical questions ("can you believe…") stay out. Due-date parsing gained
+    "next Tuesday" / "the 15th" / "in two weeks", with a vague relative duration
+    no longer overriding a hedge.
+  - *Decisions*: more phrasings ("the team chose", "it was decided", "settled
+    on") and the bare-noun false positive ("we need to **make a decision**")
+    removed.
+  - *Sentiment*: dropped neutral product terms (ship/launch) that biased every
+    product meeting positive; added missing negatives (disaster/crisis/angry).
+  - *Chapters*: merge adjacent same-title sections (one topic ≠ two chapters).
+  - *Subtitles*: WebVTT cue text/speaker names are now escaped (raw `& < >`
+    produced spec-invalid cues the browser dropped).
+  - *Cue timing*: a sparse overlong segment no longer leaves an empty leading
+    subtitle.
+- **Stemmed search (2026-05-31).** FTS now uses the `porter` tokenizer, so
+  "hire" finds "hiring/hired"; existing DBs migrate in place (index rebuilt from
+  the segments content table, no data touched). Cross-meeting Ask also drops
+  question-framing verbs ("tell me about …") from its retrieval query.
 
 ## Confirmed working
 - **Transcription accuracy is strong**: WER 3.8% (clean single speaker) and
