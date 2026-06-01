@@ -64,6 +64,12 @@ _HEDGE = re.compile(
 )
 # Strong first-person/again commitment — overrides a hedge.
 _STRONG_COMMIT = re.compile(rf"\b(i{_AP}ll|i will|we{_AP}ll|we will)\b", re.IGNORECASE)
+# "I'll say / we'll admit / I will argue / I'll tell you" — a speech act or opinion
+# marker, NOT a task. ("I'll tell Sam ..." is left intact — only "tell you".)
+_SPEECH_ACT = re.compile(
+    rf"\b(i{_AP}ll|i will|we{_AP}ll|we will)\s+"
+    r"(say|admit|argue|bet|guess|assume|suppose|add|note|mention|be honest|tell you)\b",
+    re.IGNORECASE)
 _DUE = re.compile(
     r"\b(by|before|on|due)\s+"
     r"(today|tomorrow|tonight|monday|tuesday|wednesday|thursday|friday|saturday|sunday|"
@@ -299,6 +305,8 @@ def _is_actionable(sent: str) -> bool:
     s = sent.strip()
     if s.endswith("?"):
         return False                       # questions aren't action items
+    if _SPEECH_ACT.search(s):
+        return False                       # "I'll say/admit/argue …" is talk, not a task
     if len(s.split()) < 4:
         return False                       # "Let's see." / "I'll check." fragments
     if _HEDGE.search(s) and not (_STRONG_COMMIT.search(s) or _DUE.search(s)):

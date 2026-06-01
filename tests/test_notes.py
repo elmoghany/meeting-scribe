@@ -159,6 +159,17 @@ def test_extractive_decisions_dedupe():
     assert len(oauth) == 1 and len(friday) == 1
 
 
+def test_action_items_reject_speech_acts_but_keep_real_tasks():
+    # "I'll say/admit/argue …" is discourse, not a task (found in a content audit).
+    for talk in ["I will say that the budget looks fine to me.",
+                 "I'll admit the rollout was rushed and messy.",
+                 "I'll be honest, the demo did not go well today."]:
+        assert notes.extract_action_items([_seg(talk)]) == [], f"speech act kept: {talk!r}"
+    # genuine commitments — including 'tell <someone>' — still register
+    assert notes.extract_action_items([_seg("I'll send the report by Friday.")])
+    assert notes.extract_action_items([_seg("I'll tell Sam to review the design.")])
+
+
 def test_decisions_dont_match_bare_final():
     # Real false positives found by a content audit: bare "final" must NOT count
     # as a decision (it was matched by an over-broad cue).
