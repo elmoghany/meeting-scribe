@@ -1,5 +1,4 @@
 """Per-segment confidence: model field, ASR conversion, DB roundtrip."""
-import math
 from types import SimpleNamespace
 
 from app import db

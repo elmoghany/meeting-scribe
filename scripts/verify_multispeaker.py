@@ -1,9 +1,10 @@
 """Multi-speaker verification: ASR WER + diarization speaker-count accuracy.
 
 Complements verify_batch (which only scores single-stream WER) by running the
-full pipeline — faster-whisper transcription AND pyannote diarization — on
-clips that are KNOWN to have several speakers (panels, debates, interviews),
-then checking how close the detected speaker count is to the expected count.
+full pipeline — faster-whisper transcription AND the diarization dispatcher
+(`label_speakers`, key-free by default) — on clips that are KNOWN to have
+several speakers (panels, debates, interviews), then checking how close the
+detected speaker count is to the expected count.
 
 Input file format (one clip per line):
 
@@ -32,7 +33,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from app.config import get_settings  # noqa: E402
 from scripts.verify_batch import _download  # noqa: E402
 from scripts.verify_youtube import (  # noqa: E402
-    _find_audio, normalize_words, parse_vtt, wer,
+    normalize_words, parse_vtt, wer,
 )
 
 

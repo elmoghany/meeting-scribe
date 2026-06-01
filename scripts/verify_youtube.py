@@ -261,7 +261,7 @@ def write_report(url: str, audio_path: Path, captions_path: Path | None, result:
                      f"{s['text']}")
     if not sample:
         lines.append("_(no segments)_")
-    lines += ["", f"## Pipeline counts", "",
+    lines += ["", "## Pipeline counts", "",
               f"- {n_segments} transcript segments",
               f"- {len(speakers)} distinct speakers",
               f"- {n_actions} action items", ""]

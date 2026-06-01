@@ -4,7 +4,6 @@ all the way to 'Others'). Uses injected fake torch/pyannote — no real deps."""
 import sys
 import types
 
-import pytest
 
 
 def _install_fakes(monkeypatch, cuda_available, cuda_raises):
