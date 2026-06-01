@@ -3,7 +3,16 @@ from types import SimpleNamespace
 
 from app import db
 from app.models import Segment
-from app.pipeline.asr import _confidence
+from app.pipeline.asr import _confidence, vocab_prompt
+
+
+def test_vocab_prompt():
+    assert vocab_prompt([]) is None
+    assert vocab_prompt(["  ", ""]) is None                 # all blank -> None
+    assert vocab_prompt(["Andrej", "OAuth", "  Kubernetes "]) == \
+        "Glossary of names and terms: Andrej, OAuth, Kubernetes."  # trimmed + joined
+    capped = vocab_prompt([f"term{i}" for i in range(100)], limit=10)
+    assert capped.count(",") == 9                           # capped to 10 terms (9 commas)
 
 
 def test_segment_to_dict_includes_confidence():
