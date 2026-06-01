@@ -210,6 +210,25 @@ def test_delete_batch_empty_is_noop():
             "deleted": [], "count": 0}
 
 
+def test_action_item_lifecycle_and_comment():
+    mid = _mk("srv-ai-crud")
+    db.replace_segments(mid, [Segment(start=0, end=2, text="hi", speaker="Me",
+                                      source="batch")], source="batch")
+    with TestClient(app) as c:
+        aid = c.post(f"/api/meetings/{mid}/action-items", json={"text": "ship v2"}).json()["id"]
+        assert c.post(f"/api/action/{aid}?done=true").json()["done"] is True   # toggle
+        c.patch(f"/api/action/{aid}", json={"text": "ship v2.1", "owner": "Sam"})  # edit
+        items = {a.text: a for a in db.get_action_items(mid)}
+        assert "ship v2.1" in items and items["ship v2.1"].owner == "Sam"
+        assert items["ship v2.1"].done is True                                 # done survived edit
+        assert c.post(f"/api/meetings/{mid}/comment", json={"text": "good"}).status_code == 200
+        assert c.delete(f"/api/action/{aid}").json() == {"deleted": aid}        # delete
+        assert "ship v2.1" not in [a.text for a in db.get_action_items(mid)]
+        # editing/deleting a missing item 404s
+        assert c.patch("/api/action/999999", json={"text": "x"}).status_code == 404
+        assert c.delete("/api/action/999999").status_code == 404
+
+
 def test_speaker_profile_endpoints():
     # voice profiles: list (names only), meetings-for-name, delete
     db.reset_connection()
