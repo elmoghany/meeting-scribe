@@ -81,6 +81,22 @@ def test_speaker_embeddings_per_label(tmp_path, monkeypatch):
     assert len(embs["Me"]) == 3                       # a d-vector
 
 
+def test_mic_activity_detects_speech_regions(tmp_path):
+    """The mic energy-VAD that anchors 'Me': loud frames -> speech Turns,
+    silence ignored."""
+    import soundfile as sf
+    from app.pipeline.diarize import mic_activity
+    sr = 16000
+    audio = np.concatenate([np.zeros(sr, np.float32),          # 0-1s silence
+                            np.full(sr, 0.3, np.float32),      # 1-2s loud (~-10 dB)
+                            np.zeros(sr, np.float32)])         # 2-3s silence
+    sf.write(str(tmp_path / "mic.wav"), audio, sr)
+    turns = mic_activity(str(tmp_path / "mic.wav"))
+    assert turns and all(t.speaker == "Me" for t in turns)
+    assert any(t.start < 1.5 < t.end for t in turns)          # speech region detected
+    assert not any(t.start < 0.5 < t.end for t in turns)      # silence not flagged
+
+
 def test_label_speakers_routes_to_resemblyzer(tmp_path, monkeypatch):
     """The dispatcher compute_pipeline calls: with the (default) key-free backend
     it relabels segments in place via diarize_segments."""
