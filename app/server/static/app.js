@@ -81,7 +81,7 @@ function segEl(s, withStar) {
   const ss = String(Math.floor(s.start % 60)).padStart(2, "0");
   const me = s.speaker === "Me" ? " me" : "";
   div.innerHTML = `<span class="ts">${mm}:${ss}</span>` +
-    `<span class="who${me}">${s.speaker}</span>` +
+    `<span class="who${me}">${escapeHtml(s.speaker)}</span>` +
     `<span class="txt">${escapeHtml(s.text)}</span>`;
   if (withStar && s.id != null) {
     const txt = div.querySelector(".txt");
@@ -764,7 +764,7 @@ $("search").addEventListener("input", (e) => {
       div.className = "hit";
       const mm = String(Math.floor(h.start / 60)).padStart(2, "0");
       const ss = String(Math.floor(h.start % 60)).padStart(2, "0");
-      div.innerHTML = `<b>${escapeHtml(h.title)}</b> · ${h.speaker} ${mm}:${ss}<br>` +
+      div.innerHTML = `<b>${escapeHtml(h.title)}</b> · ${escapeHtml(h.speaker)} ${mm}:${ss}<br>` +
         escapeHtml(h.snippet).replace(/\[/g, "<mark>").replace(/\]/g, "</mark>");
       activatable(div, async () => { await openMeeting(h.meeting_id); jumpToTime(h.start); });
       box.appendChild(div);
