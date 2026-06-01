@@ -159,6 +159,17 @@ def test_extractive_decisions_dedupe():
     assert len(oauth) == 1 and len(friday) == 1
 
 
+def test_unpunctuated_runon_is_wrapped_not_one_giant_overview():
+    # A poorly-punctuated transcript (no '.!?') must not yield a 100-word overview.
+    runon = " ".join(["word"] * 120)   # 120 words, zero punctuation
+    s = notes.extractive_summary(runon)
+    # overview is now a bounded chunk, not the whole run
+    assert s.overview and len(s.overview.split()) <= 45
+    # a normal short sentence is untouched
+    assert notes._soft_wrap("We shipped the v2 release today.") == \
+        ["We shipped the v2 release today."]
+
+
 def test_action_items_reject_speech_acts_but_keep_real_tasks():
     # "I'll say/admit/argue …" is discourse, not a task (found in a content audit).
     for talk in ["I will say that the budget looks fine to me.",

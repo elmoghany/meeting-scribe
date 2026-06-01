@@ -84,8 +84,34 @@ def _tokenize(text: str) -> list[str]:
     return [w for w in re.findall(r"[a-z']+", text.lower()) if w not in _STOP and len(w) > 2]
 
 
+def _soft_wrap(sent: str, max_words: int = 40) -> list[str]:
+    """Break an over-long 'sentence' into readable pieces. Whisper output for some
+    languages / continuous speech can lack '.!?' entirely, leaving a single
+    200-word run that would become an unreadable overview / decision. Split on
+    commas once past half the cap, else hard-chunk at the cap. Normal punctuated
+    sentences (<= max_words) pass through unchanged."""
+    words = sent.split()
+    if len(words) <= max_words:
+        return [sent]
+    pieces: list[str] = []
+    cur: list[str] = []
+    for w in words:
+        cur.append(w)
+        if len(cur) >= max_words or (w.endswith(",") and len(cur) >= max_words // 2):
+            pieces.append(" ".join(cur))
+            cur = []
+    if cur:
+        pieces.append(" ".join(cur))
+    return pieces
+
+
 def _sentences(text: str) -> list[str]:
-    return [s.strip() for s in _SENT_SPLIT.split(text) if len(s.strip()) > 3]
+    out: list[str] = []
+    for s in _SENT_SPLIT.split(text):
+        s = s.strip()
+        if len(s) > 3:
+            out.extend(_soft_wrap(s))
+    return out
 
 
 def _stem(w: str) -> str:
