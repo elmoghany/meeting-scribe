@@ -55,7 +55,10 @@ All notable changes to MeetingScribe are documented here. Format loosely follows
   - *Action items* now detect the canonical "**Sarah will handle the migration**"
     third-person assignment (the whitelist gained task verbs like
     handle/own/lead/coordinate, while prediction verbs stay excluded) and
-    attribute the owner to the **named person**, not the speaker.
+    attribute the owner to the **named person**, not the speaker. **Request**
+    phrasings are caught too ("**Can you review the PR?**" → an assigned action),
+    gated on a task verb so rhetorical questions ("can you believe…", "would
+    that work?") stay out.
   - *Due dates* now parse "by next Tuesday", "before the 15th", and "in two
     weeks" (qualified weekdays, ordinals, relative durations) — while "next
     steps" / "on it" / "this quarter" stay unmatched, and a vague relative
