@@ -324,6 +324,30 @@ def test_extractive_backend_summarize_and_chat():
     assert "budget" in ans.lower()
 
 
+def test_named_assignment_action_items_with_owner():
+    # "<Name> will <task-verb>" is the canonical assignment phrasing; detect it
+    # and attribute the owner to the named person, not the speaker.
+    segs = [_seg("Sarah will handle the database migration next week.", "Bob"),
+            _seg("Carol will coordinate with the vendor.", "Bob"),
+            _seg("Action item: John to update the roadmap doc.", "Alice")]
+    items = notes.extract_action_items(segs)
+    by_owner = {a.owner: a.text for a in items}
+    assert "Sarah" in by_owner and "handle" in by_owner["Sarah"].lower()
+    assert "Carol" in by_owner
+    assert "John" in by_owner                       # "John to update" -> owner John, not Alice
+
+
+def test_prediction_will_sentences_are_not_action_items():
+    # precision guard: "<thing> will <predict>" must NOT be flagged (the task-verb
+    # whitelist excludes prediction verbs, and pronoun subjects aren't owners).
+    segs = [_seg("It will rain tomorrow according to the forecast."),
+            _seg("This will help us a lot in the long run."),
+            _seg("They will probably disagree with that approach."),
+            _seg("The API will return a 404 in that case."),
+            _seg("Revenue will grow a lot next year we hope.")]
+    assert notes.extract_action_items(segs) == []   # no false positives
+
+
 def test_chat_no_match_returns_not_found():
     # a question with no token overlap with the transcript -> explicit "not found"
     backend = notes.ExtractiveNotes()

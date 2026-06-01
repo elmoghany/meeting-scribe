@@ -48,7 +48,13 @@ _ACTION_CUES = re.compile(
     r"you (should|need to|have to|must)|we (should|need to|have to|must)|"
     rf"i (need to|have to|should|must)|please|make sure|don{_AP}t forget|assign|"
     r"will (send|share|email|prepare|review|update|create|set up|schedule|draft|"
-    r"check|fix|look into|circle back))\b",
+    r"check|fix|look into|circle back|"
+    # task verbs that signal an assignment regardless of subject ("Sarah will
+    # handle …"); deliberately excludes prediction verbs (be/help/grow/rain) to
+    # avoid flagging "this will help" as an action item.
+    r"handle|own|lead|drive|manage|coordinate|organize|write|build|ship|deliver|"
+    r"finish|complete|contact|investigate|compile|escalate|book|put together|"
+    r"reach out|follow up))\b",
     re.IGNORECASE,
 )
 _DECISION_CUES = re.compile(
@@ -354,10 +360,22 @@ def _is_actionable(sent: str) -> bool:
     return True
 
 
+# Subjects that look like a name (capitalized) but aren't a person to assign to.
+_PRONOUN_SUBJ = {"i", "it", "this", "that", "these", "those", "there", "they",
+                 "we", "he", "she", "you", "the", "a", "an", "then", "so", "now",
+                 "here", "what", "who", "which", "if", "and", "but", "everyone",
+                 "someone", "anyone", "nobody", "let", "please"}
+# "Sarah will handle …", "John to update …" — a named subject driving the task.
+_NAMED_ASSIGN = re.compile(r"\b([A-Z][a-z]+)\s+(?:will|to)\s+[a-z]")
+
+
 def _infer_owner(sentence: str, speaker: str) -> str | None:
     low = sentence.lower()
     if re.search(rf"\bi{_AP}ll\b|\bi will\b|\bi (need|have) to\b", low):
         return speaker if speaker not in ("Unknown",) else "Me"
+    m = _NAMED_ASSIGN.search(sentence)
+    if m and m.group(1).lower() not in _PRONOUN_SUBJ:
+        return m.group(1)                  # "Sarah will handle …" -> Sarah
     if re.search(r"\byou (should|need to|have to|must|will)\b", low):
         return "(assigned)"
     return speaker if speaker not in ("Unknown",) else None
