@@ -247,6 +247,16 @@ def test_sentiment_positive_negative_neutral():
     assert notes.sentiment(neu)["label"] == "neutral"
 
 
+def test_sentiment_product_logistics_terms_are_neutral():
+    # "ship"/"launch" are neutral logistics terms, not positive sentiment — a
+    # plain delivery statement must not read as positive, and "launch failed"
+    # must read negative (previously 'launch' cancelled out 'failed').
+    plan = notes.sentiment([_seg("We will ship the feature Friday and launch next month.")])
+    assert plan["label"] == "neutral" and plan["positive"] == 0
+    bad = notes.sentiment([_seg("The launch failed and the customers are angry.")])
+    assert bad["label"] == "negative"               # 'angry' + 'failed', no false positive
+
+
 def test_sentiment_negation_flips():
     # "not good" should NOT count as positive
     s = notes.sentiment([_seg("That is not good and not great.")])

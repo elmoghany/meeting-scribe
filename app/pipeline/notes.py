@@ -222,18 +222,22 @@ def extractive_summary(transcript_text: str, max_points: int = 7) -> Summary:
 
 
 _POS_WORDS = frozenset((
+    # NOTE: deliberately excludes neutral product-logistics terms (ship/launch),
+    # which appear constantly in neutral or negative contexts ("the launch
+    # failed") and otherwise bias every product meeting positive.
     "good great excellent agree agreed love happy success won win winning "
-    "perfect awesome fantastic thanks thank helpful productive ship shipped "
-    "shipping launch launched ready done complete completed approved yes "
+    "perfect awesome fantastic thanks thank helpful productive "
+    "ready done complete completed approved yes "
     "solved solving fixed fix nice clear clearly clean smooth smoothly "
     "appreciate appreciated appreciation effective efficient on-track unblocked"
 ).split())
 _NEG_WORDS = frozenset((
-    "bad terrible awful problem problems issue issues blocker blocked blocker's "
-    "delayed delay fail failed failure broken broke break concerned concern "
-    "worry worried sorry wrong error errors missed missing stuck frustrating "
-    "frustrated confusing confused unclear difficult hard struggle struggling "
-    "regret regression bug bugs slip slipped slipping off-track unhappy disappointed"
+    "bad terrible awful disaster crisis problem problems issue issues blocker "
+    "blocked delayed delay fail failed failure broken broke break concerned "
+    "concern worry worried sorry wrong error errors missed missing stuck angry "
+    "frustrating frustrated confusing confused unclear difficult hard struggle "
+    "struggling painful worst regret regression bug bugs slip slipped slipping "
+    "off-track unhappy disappointed"
 ).split())
 _NEG_GATES = frozenset({"not", "no", "never", "without", "cannot", "cant",
                         "couldnt", "wont", "didnt", "doesnt", "dont"})
