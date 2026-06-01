@@ -44,6 +44,11 @@ All notable changes to MeetingScribe are documented here. Format loosely follows
 - **Reprocess keeps highlights & comments.** Re-transcription necessarily makes
   new segments, but annotations are now re-anchored to the segment covering the
   same moment instead of being orphaned.
+- **Hardening / escaping.** Search no longer 500s on a stray quote (FTS
+  fallback); a configured LLM that errors at inference falls back to extractive
+  so the transcript is preserved; user-controlled values are escaped everywhere
+  (speaker names in the transcript/search, the OAuth-callback error param); and
+  every path-using endpoint validates the meeting before touching the filesystem.
 
 ### Added
 - **Auto chapters** — jump-to-topic timeline, keyword-titled, click to seek;
