@@ -17,6 +17,28 @@ class Turn:
     speaker: str
 
 
+def _split_long(seg: Segment, max_len: float) -> list[Segment]:
+    """Split a segment that's longer than max_len into ~equal time chunks, so a
+    rare overlong RAW ASR segment (continuous speech with no VAD break) still
+    yields navigation anchors. Text is divided by word count proportional to
+    time — approximate (no word-level timestamps) but keeps every word and gives
+    roughly-right seek points."""
+    dur = seg.end - seg.start
+    words = seg.text.split()
+    if dur <= max_len or len(words) < 2:
+        return [seg]
+    n = int(dur // max_len) + 1
+    out: list[Segment] = []
+    for i in range(n):
+        ws = words[i * len(words) // n:(i + 1) * len(words) // n]
+        if not ws:
+            continue
+        out.append(Segment(start=seg.start + dur * i / n,
+                           end=seg.start + dur * (i + 1) / n,
+                           text=" ".join(ws), speaker=seg.speaker, source=seg.source))
+    return out or [seg]
+
+
 def _overlap(a0: float, a1: float, b0: float, b1: float) -> float:
     return max(0.0, min(a1, b1) - max(a0, b0))
 
@@ -85,7 +107,12 @@ def merge_adjacent(segments: list[Segment], max_gap: float = 1.0,
         else:
             merged.append(Segment(start=seg.start, end=seg.end, text=seg.text.strip(),
                                   speaker=seg.speaker, source=seg.source))
-    return merged
+    # split any segment still over the cap (an already-long RAW input segment the
+    # merge loop couldn't have shortened) so the length bound is a real guarantee.
+    out: list[Segment] = []
+    for m in merged:
+        out.extend(_split_long(m, max_len))
+    return out
 
 
 def renumber_speakers(segments: list[Segment], keep: tuple[str, ...] = ("Me",),

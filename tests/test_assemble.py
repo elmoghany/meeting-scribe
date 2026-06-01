@@ -62,6 +62,23 @@ def test_merge_caps_length_for_monologue():
     assert max(m.end for m in merged) == 60.0                  # full span preserved
 
 
+def test_merge_splits_overlong_raw_segment():
+    # A single 50s raw ASR segment (no internal gaps to merge on) must still be
+    # split so it doesn't become one un-navigable block / 50s subtitle cue.
+    seg = _seg(0, 50, "one two three four five six seven eight nine ten", "Me")
+    out = assemble.merge_adjacent([seg], max_len=30.0)
+    assert len(out) >= 2
+    assert all((m.end - m.start) <= 30.0 for m in out)   # bound is now a guarantee
+    assert out[0].start == 0.0 and abs(out[-1].end - 50.0) < 1e-6   # span preserved
+    # every word is kept across the split
+    assert " ".join(m.text for m in out).split() == seg.text.split()
+
+
+def test_merge_does_not_split_short_or_single_word():
+    assert len(assemble.merge_adjacent([_seg(0, 50, "word", "Me")], max_len=30.0)) == 1
+    assert len(assemble.merge_adjacent([_seg(0, 5, "a b c", "Me")], max_len=30.0)) == 1
+
+
 def test_merge_keeps_gap_split():
     segs = [_seg(0, 1, "a", "Me"), _seg(10, 11, "b", "Me")]  # 9s gap
     assert len(assemble.merge_adjacent(segs, max_gap=1.0)) == 2
