@@ -93,6 +93,19 @@ def test_export_each_format_dispatches():
             f"/api/meetings/{mid}/export", params={"fmt": "json"}).text)
 
 
+def test_export_empty_meeting_does_not_crash():
+    # exporting a meeting that has no transcript yet (still processing) should
+    # return valid empty-ish output, not 500.
+    mid = _mk("srv-empty-export", title="Pending")
+    with TestClient(app) as c:
+        for fmt in ("txt", "srt", "vtt", "json", "html", "md"):
+            r = c.get(f"/api/meetings/{mid}/export", params={"fmt": fmt})
+            assert r.status_code == 200, f"{fmt} -> {r.status_code}"
+        import json as _json
+        d = _json.loads(c.get(f"/api/meetings/{mid}/export", params={"fmt": "json"}).text)
+        assert d["transcript"] == [] and d["meeting"]["id"] == mid
+
+
 def test_export_unknown_format_400s():
     mid = _mk("srv-bad-fmt")
     db.replace_segments(mid, [Segment(start=0, end=1, text="hi", speaker="Me",
