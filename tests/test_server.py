@@ -4,7 +4,7 @@ from fastapi.testclient import TestClient
 
 from app import db
 from app.config import get_settings
-from app.models import Meeting, Segment
+from app.models import ActionItem, Meeting, Segment
 from app.server.main import app
 
 
@@ -59,6 +59,113 @@ def test_empty_comment_400s():
 def test_empty_search_returns_empty_list():
     with TestClient(app) as c:
         assert c.get("/api/search", params={"q": "   "}).json() == []
+
+
+def test_zoom_oauth_start_not_configured_400(monkeypatch):
+    from app.integrations import zoom
+    monkeypatch.setattr(zoom, "is_configured", lambda: False)
+    with TestClient(app) as c:
+        assert c.get("/oauth/zoom/start", follow_redirects=False).status_code == 400
+
+
+def test_zoom_oauth_start_redirects_when_configured(monkeypatch):
+    from app.integrations import zoom
+    monkeypatch.setattr(zoom, "is_configured", lambda: True)
+    monkeypatch.setattr(zoom, "authorize_url", lambda: "https://zoom.us/oauth/authorize?x=1")
+    with TestClient(app) as c:
+        r = c.get("/oauth/zoom/start", follow_redirects=False)
+        assert r.status_code in (302, 307) and "zoom.us" in r.headers["location"]
+
+
+def test_zoom_oauth_callback_escapes_error(monkeypatch):
+    with TestClient(app) as c:
+        r = c.get("/oauth/zoom/callback", params={"error": "<script>x</script>"})
+        assert r.status_code == 200
+        assert "&lt;script&gt;" in r.text and "<script>" not in r.text   # XSS-safe
+
+
+def test_zoom_oauth_callback_success_and_failure(monkeypatch):
+    from app.integrations import zoom
+    seen = {}
+    monkeypatch.setattr(zoom, "exchange_code", lambda code: seen.update(code=code))
+    with TestClient(app) as c:
+        ok = c.get("/oauth/zoom/callback", params={"code": "abc123"})
+        assert ok.status_code == 200 and "connected" in ok.text.lower()
+        assert seen["code"] == "abc123"
+
+    def boom(code):
+        raise RuntimeError("invalid grant")
+    monkeypatch.setattr(zoom, "exchange_code", boom)
+    with TestClient(app) as c:
+        bad = c.get("/oauth/zoom/callback", params={"code": "x"})
+        assert bad.status_code == 500 and "exchange failed" in bad.text.lower()
+
+
+def test_zoom_status_reports_configured_connected_autostart(monkeypatch):
+    from app.integrations import zoom
+    monkeypatch.setattr(zoom, "is_configured", lambda: True)
+    monkeypatch.setattr(zoom, "connected", lambda: False)
+    with TestClient(app) as c:
+        j = c.get("/api/zoom/status").json()
+        assert j["configured"] is True and j["connected"] is False and "autostart" in j
+
+
+def test_meetings_list_includes_tags_and_stats():
+    mid = _mk("srv-list-1", title="Listed")
+    db.add_segments(mid, [Segment(start=0, end=2, text="hello there world",
+                                  speaker="Me", source="batch")])
+    with TestClient(app) as c:
+        items = c.get("/api/meetings").json()
+        m = next(x for x in items if x["id"] == mid)
+        assert isinstance(m["tags"], list)                       # tags attached
+        assert m["stats"]["segments"] >= 1 and m["stats"]["words"] >= 3  # stats computed
+
+
+def test_action_items_list_and_csv():
+    mid = _mk("srv-ai")
+    db.add_action_item(mid, ActionItem(text="Email the vendor", owner="Sam",
+                                       due="Fri", done=False))
+    with TestClient(app) as c:
+        items = c.get("/api/action-items").json()
+        assert any(a["text"] == "Email the vendor" for a in items)
+        open_items = c.get("/api/action-items", params={"open_only": True}).json()
+        assert any(a["text"] == "Email the vendor" for a in open_items)   # open filter
+        csv = c.get("/api/action-items.csv")
+        assert csv.status_code == 200 and "text/csv" in csv.headers["content-type"]
+        assert "Email the vendor" in csv.text                     # rendered into CSV
+
+
+def test_annotation_comment_highlight_delete_lifecycle():
+    mid = _mk("srv-annot")
+    db.add_segments(mid, [Segment(start=0, end=2, text="hi", speaker="Me", source="batch")])
+    seg = db.get_segments(mid, source="batch")[0]
+    with TestClient(app) as c:
+        aid = c.post(f"/api/meetings/{mid}/comment",
+                     json={"text": "good point", "segment_id": seg.id}).json()["id"]
+        assert aid
+        anns = c.get(f"/api/meetings/{mid}/annotations").json()
+        assert any(a["id"] == aid for a in anns)                  # listed
+        h = c.post(f"/api/meetings/{mid}/highlight/{seg.id}").json()
+        assert isinstance(h["highlighted"], bool)                # toggled
+        assert c.delete(f"/api/annotations/{aid}").json()["deleted"] == aid   # removed
+
+
+def test_chat_success_with_extractive_backend():
+    mid = _mk("srv-chat-ok")
+    db.add_segments(mid, [Segment(start=0, end=3, speaker="Sam", source="batch",
+                                  text="The budget is fifty thousand dollars this quarter.")])
+    with TestClient(app) as c:
+        r = c.post(f"/api/meetings/{mid}/chat", json={"question": "What is the budget?"})
+        assert r.status_code == 200 and r.json()["answer"]       # extractive backend answered
+
+
+def test_search_returns_matching_segments():
+    mid = _mk("srv-search-hits")
+    db.add_segments(mid, [Segment(start=0, end=2, text="quarterly revenue projections",
+                                  speaker="Me", source="batch")])
+    with TestClient(app) as c:
+        hits = c.get("/api/search", params={"q": "revenue"}).json()
+        assert len(hits) >= 1                                     # FTS found the segment
 
 
 def test_highlight_reel_without_highlights_404s():
