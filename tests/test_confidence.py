@@ -6,6 +6,29 @@ from app.models import Segment
 from app.pipeline.asr import _confidence, vocab_prompt
 
 
+def test_transcribe_file_builds_segments(monkeypatch):
+    # cover the ASR orchestration: map model output -> Segments with confidence,
+    # drop blank text, attach speaker/source, return language. Model is mocked.
+    from app.pipeline import asr
+    from app.pipeline.asr import Transcriber
+
+    fake_segs = [SimpleNamespace(start=0.0, end=1.0, text=" hello ", avg_logprob=-0.2),
+                 SimpleNamespace(start=1.0, end=2.0, text="   ", avg_logprob=-0.1),  # blank
+                 SimpleNamespace(start=2.0, end=3.0, text="world", avg_logprob=-3.0)]
+
+    class FakeModel:
+        def transcribe(self, path, **kw):
+            return iter(fake_segs), SimpleNamespace(language="en")
+
+    monkeypatch.setattr(asr, "_load", lambda *a, **k: FakeModel())
+    segs, lang = Transcriber(model_name="fake").transcribe_file("x.wav", speaker="Me")
+    assert lang == "en"
+    assert [s.text for s in segs] == ["hello", "world"]      # blank dropped, trimmed
+    assert all(s.speaker == "Me" and s.source == "batch" for s in segs)
+    assert segs[0].confidence is not None
+    assert segs[1].confidence < segs[0].confidence           # lower logprob -> lower confidence
+
+
 def test_vocab_prompt():
     assert vocab_prompt([]) is None
     assert vocab_prompt(["  ", ""]) is None                 # all blank -> None
