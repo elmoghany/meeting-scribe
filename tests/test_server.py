@@ -210,6 +210,18 @@ def test_delete_batch_empty_is_noop():
             "deleted": [], "count": 0}
 
 
+def test_speaker_profile_endpoints():
+    # voice profiles: list (names only), meetings-for-name, delete
+    db.reset_connection()
+    db.upsert_profile("Alice Example", [0.1] * 256)   # a stored d-vector
+    with TestClient(app) as c:
+        names = [p["name"] for p in c.get("/api/speakers").json()]
+        assert "Alice Example" in names
+        assert isinstance(c.get("/api/speakers/Alice Example/meetings").json(), list)
+        assert c.delete("/api/speakers/Alice Example").json() == {"deleted": "Alice Example"}
+        assert "Alice Example" not in [p["name"] for p in c.get("/api/speakers").json()]
+
+
 def test_chapters_endpoint():
     mid = _mk("srv-chapters")
     db.replace_segments(mid, [
