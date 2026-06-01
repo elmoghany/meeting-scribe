@@ -37,6 +37,8 @@ def test_unknown_meeting_404s():
         assert c.get("/api/meetings/nope/export?fmt=md").status_code == 404
         assert c.get("/api/meetings/nope/analytics").status_code == 404
         assert c.get("/api/meetings/nope/audio").status_code == 404
+        assert c.get("/api/meetings/nope/clip?start=0&end=1").status_code == 404  # guarded before path use
+        assert c.get("/api/meetings/nope/chapters").status_code == 404
         assert c.post("/api/meetings/nope/title", json={"title": "x"}).status_code == 404
 
 

@@ -346,6 +346,8 @@ def meeting_export(meeting_id: str, fmt: str = "txt"):
 @app.get("/api/meetings/{meeting_id}/clip")
 def meeting_clip(meeting_id: str, start: float, end: float):
     """Download a WAV clip [start,end] of the meeting — share a single highlight."""
+    if not db.get_meeting(meeting_id):      # validate before forming a filesystem path
+        raise HTTPException(404, "Meeting not found")
     s = get_settings()
     rec = s.recordings_dir / meeting_id
     from ..pipeline.audiomix import ensure_meeting_wav, extract_clip
