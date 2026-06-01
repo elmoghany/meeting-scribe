@@ -136,6 +136,59 @@ def test_zoom_server_to_server_token(monkeypatch):
         config.get_settings.cache_clear()
 
 
+def test_zoom_s2s_reuses_cached_token(monkeypatch):
+    # server-to-server with a cached, unexpired token must NOT mint a new one
+    monkeypatch.setenv("ZOOM_CLIENT_ID", "cid")
+    monkeypatch.setenv("ZOOM_CLIENT_SECRET", "sec")
+    monkeypatch.setenv("ZOOM_ACCOUNT_ID", "acct")
+    config.get_settings.cache_clear()
+    tok_path = zoom._token_path()
+    try:
+        tok_path.write_text(json.dumps(
+            {"access_token": "CACHED", "expires_at": time.time() + 3600}))
+
+        def _no_post(*a, **k):
+            raise AssertionError("should not mint a fresh token when cache is valid")
+        monkeypatch.setattr(httpx, "post", _no_post)
+        assert zoom._access_token() == "CACHED"
+    finally:
+        if tok_path.exists():
+            tok_path.unlink()
+        config.get_settings.cache_clear()
+
+
+def test_zoom_user_token_missing_raises(monkeypatch):
+    monkeypatch.setenv("ZOOM_CLIENT_ID", "cid")
+    monkeypatch.setenv("ZOOM_CLIENT_SECRET", "sec")
+    monkeypatch.delenv("ZOOM_ACCOUNT_ID", raising=False)
+    config.get_settings.cache_clear()
+    tok_path = zoom._token_path()
+    try:
+        if tok_path.exists():
+            tok_path.unlink()
+        with __import__("pytest").raises(RuntimeError, match="not authorized"):
+            zoom._access_token()                 # no token file -> must re-authorize
+    finally:
+        config.get_settings.cache_clear()
+
+
+def test_zoom_expired_token_without_refresh_raises(monkeypatch):
+    monkeypatch.setenv("ZOOM_CLIENT_ID", "cid")
+    monkeypatch.setenv("ZOOM_CLIENT_SECRET", "sec")
+    monkeypatch.delenv("ZOOM_ACCOUNT_ID", raising=False)
+    config.get_settings.cache_clear()
+    tok_path = zoom._token_path()
+    try:
+        tok_path.write_text(json.dumps(
+            {"access_token": "OLD", "expires_at": time.time() - 10}))  # expired, no refresh
+        with __import__("pytest").raises(RuntimeError, match="no refresh token"):
+            zoom._access_token()
+    finally:
+        if tok_path.exists():
+            tok_path.unlink()
+        config.get_settings.cache_clear()
+
+
 def test_zoom_get_uses_bearer_auth(monkeypatch):
     monkeypatch.setenv("ZOOM_CLIENT_ID", "cid")
     monkeypatch.setenv("ZOOM_CLIENT_SECRET", "sec")

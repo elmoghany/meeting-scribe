@@ -332,6 +332,79 @@ def test_record_start_failure_clears_session(monkeypatch):
         assert c.get("/api/status").json()["recording"] is False
 
 
+def test_devices_endpoint_success_and_failure(monkeypatch):
+    from app import capture
+    monkeypatch.setattr(capture, "list_devices", lambda: [{"index": 0, "name": "Mic"}])
+    with TestClient(app) as c:
+        assert c.get("/api/devices").json() == [{"index": 0, "name": "Mic"}]
+
+    def boom():
+        raise RuntimeError("no audio backend")
+    monkeypatch.setattr(capture, "list_devices", boom)
+    with TestClient(app) as c:
+        r = c.get("/api/devices")
+        assert r.status_code == 503 and "no audio backend" in r.json()["error"]
+
+
+def test_record_start_generic_exception_returns_500(monkeypatch):
+    from app.server import main
+
+    class _BoomSession:
+        def __init__(self, *a, **k):
+            self.is_recording = False
+
+        def start(self):
+            raise ValueError("capture device exploded")     # not a RuntimeError
+
+    monkeypatch.setattr(main, "MeetingSession", _BoomSession)
+    monkeypatch.setattr(main, "_session", None)
+    with TestClient(app) as c:
+        r = c.post("/api/record/start", json={"title": "x", "platform": "other"})
+        assert r.status_code == 500
+        assert main._session is None                          # cleaned up despite odd error
+    monkeypatch.setattr(main, "_session", None)
+
+
+def test_broadcaster_fans_out_and_drops_dead_clients():
+    import asyncio
+
+    from app.server import main
+
+    sent = []
+
+    class _Good:
+        async def send_json(self, e):
+            sent.append(e)
+
+    class _Dead:
+        async def send_json(self, e):
+            raise RuntimeError("socket closed")
+
+    good, dead = _Good(), _Dead()
+
+    async def run():
+        orig_q = main._event_q
+        main._event_q = asyncio.Queue()          # fresh queue bound to THIS loop
+        main._clients.clear()
+        main._clients.update({good, dead})
+        try:
+            await main._event_q.put({"type": "ping"})
+            task = asyncio.create_task(main._broadcaster())
+            await asyncio.sleep(0.05)
+            task.cancel()
+            try:
+                await task
+            except asyncio.CancelledError:
+                pass
+        finally:
+            main._event_q = orig_q
+
+    asyncio.run(run())
+    assert sent == [{"type": "ping"}]                         # delivered to the live client
+    assert good in main._clients and dead not in main._clients  # dead socket pruned
+    main._clients.clear()
+
+
 def test_record_stop_without_active_returns_409(monkeypatch):
     _patch_recording(monkeypatch)
     with TestClient(app) as c:
