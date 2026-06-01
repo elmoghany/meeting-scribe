@@ -81,6 +81,43 @@ def test_speaker_embeddings_per_label(tmp_path, monkeypatch):
     assert len(embs["Me"]) == 3                       # a d-vector
 
 
+def test_label_speakers_routes_to_resemblyzer(tmp_path, monkeypatch):
+    """The dispatcher compute_pipeline calls: with the (default) key-free backend
+    it relabels segments in place via diarize_segments."""
+    import sys
+    import types
+
+    import soundfile as sf
+    from app.pipeline.diarize import label_speakers
+    sr = 16000
+    audio = np.concatenate([np.full(sr * 2, 0.5, np.float32),
+                            np.full(sr * 2, -0.5, np.float32)])
+    sf.write(str(tmp_path / "m.wav"), audio, sr)
+
+    fake = types.ModuleType("resemblyzer")
+
+    class FakeEnc:
+        def __init__(self, verbose=False):
+            pass
+
+        def embed_utterance(self, clip):
+            m = float(np.mean(clip))
+            return np.array([m, 1.0 - abs(m), 0.0])
+
+    fake.VoiceEncoder = FakeEnc
+    fake.preprocess_wav = lambda x, source_sr=None: np.asarray(x, dtype=np.float32)
+    monkeypatch.setitem(sys.modules, "resemblyzer", fake)
+    monkeypatch.setenv("MEETINGSCRIBE_DIARIZER", "resemblyzer")
+    from app import config
+    config.get_settings.cache_clear()
+
+    segs = [Segment(start=0, end=2, text="a", speaker="Unknown", source="batch"),
+            Segment(start=2, end=4, text="b", speaker="Unknown", source="batch")]
+    out = label_speakers(str(tmp_path / "m.wav"), segs)
+    assert {s.speaker for s in out} == {"Speaker 1", "Speaker 2"}   # relabeled, two speakers
+    config.get_settings.cache_clear()
+
+
 def _v(*x):
     a = np.array(x, dtype=float)
     return a / np.linalg.norm(a)
