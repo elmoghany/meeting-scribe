@@ -67,6 +67,31 @@ def test_line_unfolding():
     assert evs[0].summary == "Long title that is folded"
 
 
+def test_parse_dt_handles_all_formats():
+    # UTC 'Z', naive datetime (assumed UTC), date-only, and garbage
+    assert ics._parse_dt("20260601T100000Z") == datetime(2026, 6, 1, 10, tzinfo=timezone.utc)
+    assert ics._parse_dt("20260601T100000") == datetime(2026, 6, 1, 10, tzinfo=timezone.utc)
+    assert ics._parse_dt("20260601") == datetime(2026, 6, 1, 0, 0, tzinfo=timezone.utc)
+    assert ics._parse_dt("not-a-date") is None      # unparseable -> None, not a crash
+
+
+def test_weekly_until_stops_mid_week():
+    # Mon seed, MO/WE/FR; UNTIL Wed -> Fri is past UNTIL so expansion returns early
+    evs = ics.upcoming_events(
+        _cal(_ev("20260601T100000Z", rrule="FREQ=WEEKLY;BYDAY=MO,WE,FR;UNTIL=20260603T235959Z")),
+        horizon_sec=30 * 86400, now=NOW_TS)
+    assert len(evs) == 2                              # Mon 06-01 and Wed 06-03 only
+    for e in evs:
+        assert datetime.fromtimestamp(e.start, timezone.utc).weekday() in (0, 2)
+
+
+def test_weekly_count_caps_occurrences():
+    evs = ics.upcoming_events(
+        _cal(_ev("20260601T100000Z", rrule="FREQ=WEEKLY;BYDAY=MO,WE,FR;COUNT=2")),
+        horizon_sec=30 * 86400, now=NOW_TS)
+    assert len(evs) == 2                              # COUNT halts after two emissions
+
+
 def test_unsupported_rrule_returns_seed_only():
     evs = ics.upcoming_events(_cal(_ev("20260601T100000Z", rrule="FREQ=MONTHLY")),
                               horizon_sec=2 * 86400, now=NOW_TS)

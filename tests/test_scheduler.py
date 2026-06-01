@@ -43,6 +43,48 @@ def _auto(monkeypatch, meetings):
     return ar, calls
 
 
+def _bare_recorder():
+    return scheduler.AutoRecorder(lambda *a: "m", lambda: None, lambda: False)
+
+
+def test_load_ics_reads_local_file(tmp_path, monkeypatch):
+    from app import config
+    ics_file = tmp_path / "cal.ics"
+    ics_file.write_text("BEGIN:VCALENDAR\nEND:VCALENDAR\n", encoding="utf-8")
+    monkeypatch.setenv("CALENDAR_ICS_PATH", str(ics_file))
+    monkeypatch.delenv("CALENDAR_ICS_URL", raising=False)
+    config.get_settings.cache_clear()
+    try:
+        ar = _bare_recorder()
+        assert "VCALENDAR" in ar._load_ics(get_settings())     # file contents loaded
+    finally:
+        config.get_settings.cache_clear()
+
+
+def test_load_ics_missing_file_records_error(tmp_path, monkeypatch):
+    from app import config
+    monkeypatch.setenv("CALENDAR_ICS_PATH", str(tmp_path / "nope.ics"))
+    monkeypatch.delenv("CALENDAR_ICS_URL", raising=False)
+    config.get_settings.cache_clear()
+    try:
+        ar = _bare_recorder()
+        assert ar._load_ics(get_settings()) is None            # unreadable -> None
+        assert ar.last_error and "ics-load" in ar.last_error    # surfaced, loop survives
+    finally:
+        config.get_settings.cache_clear()
+
+
+def test_load_ics_none_when_unconfigured(monkeypatch):
+    from app import config
+    monkeypatch.delenv("CALENDAR_ICS_PATH", raising=False)
+    monkeypatch.delenv("CALENDAR_ICS_URL", raising=False)
+    config.get_settings.cache_clear()
+    try:
+        assert _bare_recorder()._load_ics(get_settings()) is None   # nothing configured
+    finally:
+        config.get_settings.cache_clear()
+
+
 def test_starts_meeting_about_to_begin(monkeypatch):
     now = time.time()
     iso = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(now + 30))  # in 30s
