@@ -159,6 +159,17 @@ def test_extractive_decisions_dedupe():
     assert len(oauth) == 1 and len(friday) == 1
 
 
+def test_decisions_dont_match_bare_final():
+    # Real false positives found by a content audit: bare "final" must NOT count
+    # as a decision (it was matched by an over-broad cue).
+    s = notes.extractive_summary("This is our final episode. The final pieces fit.")
+    assert s.decisions == []
+    # but the verb forms and "decision" still do
+    s2 = notes.extractive_summary("We finalized the budget. The decision is to ship.")
+    assert any("finaliz" in d.lower() for d in s2.decisions)
+    assert any("decision" in d.lower() or "ship" in d.lower() for d in s2.decisions)
+
+
 def test_sentiment_positive_negative_neutral():
     pos = [_seg("Great work everyone, shipped the release. Excellent and thanks!")]
     neg = [_seg("This is a terrible blocker, we are stuck and frustrated.")]

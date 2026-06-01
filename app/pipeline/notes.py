@@ -53,7 +53,7 @@ _ACTION_CUES = re.compile(
 )
 _DECISION_CUES = re.compile(
     r"\b(we (decided|agreed|will go with|chose)|decision|agreed to|let'?s go with|"
-    r"final(ize|ized)?|we'?re going with|approved)\b",
+    r"finaliz(e|ed)|we'?re going with|approved)\b",
     re.IGNORECASE,
 )
 # Hedged / speculative framing — a musing, not a commitment.
