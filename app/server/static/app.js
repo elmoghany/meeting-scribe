@@ -751,6 +751,12 @@ $("search").addEventListener("input", (e) => {
     const box = $("search-results"); box.innerHTML = "";
     if (!q) return;
     const hits = await api("/api/search?q=" + encodeURIComponent(q));
+    if (hits.length) {
+      const head = document.createElement("div");
+      head.className = "ask-src";
+      head.textContent = `${hits.length} match${hits.length === 1 ? "" : "es"}`;
+      box.appendChild(head);
+    }
     for (const h of hits) {
       const div = document.createElement("div");
       div.className = "hit";
