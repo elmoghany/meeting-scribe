@@ -59,8 +59,16 @@ def apply_me_prior(segments: list[Segment], mic_turns: list[Turn],
     return out
 
 
-def merge_adjacent(segments: list[Segment], max_gap: float = 1.0) -> list[Segment]:
-    """Merge consecutive same-speaker segments separated by <= max_gap seconds."""
+def merge_adjacent(segments: list[Segment], max_gap: float = 1.0,
+                   max_len: float = 30.0) -> list[Segment]:
+    """Merge consecutive same-speaker segments separated by <= max_gap seconds,
+    but stop once a merged block would exceed `max_len` seconds.
+
+    The length cap matters: without it a continuous monologue (sub-second gaps)
+    collapses into one giant segment, leaving almost no click-to-seek anchors and
+    producing unusably long SRT/VTT cues. Capping keeps readable paragraphs while
+    preserving timestamp granularity for navigation, clips, and subtitles.
+    """
     if not segments:
         return []
     ordered = sorted(segments, key=lambda s: s.start)
@@ -70,7 +78,8 @@ def merge_adjacent(segments: list[Segment], max_gap: float = 1.0) -> list[Segmen
     ]
     for seg in ordered[1:]:
         last = merged[-1]
-        if seg.speaker == last.speaker and (seg.start - last.end) <= max_gap:
+        if (seg.speaker == last.speaker and (seg.start - last.end) <= max_gap
+                and (max(last.end, seg.end) - last.start) <= max_len):
             last.end = max(last.end, seg.end)
             last.text = (last.text + " " + seg.text.strip()).strip()
         else:

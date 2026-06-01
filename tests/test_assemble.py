@@ -52,6 +52,16 @@ def test_merge_adjacent_same_speaker():
     assert merged[0].speaker == "Me"
 
 
+def test_merge_caps_length_for_monologue():
+    # 12 contiguous same-speaker 5s segments (no gaps) = 60s of monologue.
+    segs = [_seg(i * 5, i * 5 + 5, f"part {i}", "Me") for i in range(12)]
+    merged = assemble.merge_adjacent(segs, max_gap=1.0, max_len=30.0)
+    # without a cap this would be ONE 60s block; capped at 30s it stays splittable
+    assert len(merged) >= 2
+    assert all((m.end - m.start) <= 30.0 + 5 for m in merged)  # ~cap (+ one trailing seg)
+    assert max(m.end for m in merged) == 60.0                  # full span preserved
+
+
 def test_merge_keeps_gap_split():
     segs = [_seg(0, 1, "a", "Me"), _seg(10, 11, "b", "Me")]  # 9s gap
     assert len(assemble.merge_adjacent(segs, max_gap=1.0)) == 2
