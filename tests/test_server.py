@@ -245,6 +245,10 @@ def test_delete_audio_removes_wavs_keeps_meeting():
     (rec / "mic.wav").write_bytes(b"RIFFyyyyWAVE")
     with TestClient(app) as c:
         r = c.post(f"/api/meetings/{mid}/delete-audio").json()
-    assert set(r["removed"]) == {"system.wav", "mic.wav"}
+        assert set(r["removed"]) == {"system.wav", "mic.wav"}
+        # playing now 404s gracefully (drives the UI 'audio removed' indicator),
+        # but the meeting + notes are preserved
+        assert c.get(f"/api/meetings/{mid}/audio").status_code == 404
+        assert c.get(f"/api/meetings/{mid}").status_code == 200
     assert not (rec / "system.wav").exists()
     assert db.get_meeting(mid) is not None  # notes/meeting preserved
