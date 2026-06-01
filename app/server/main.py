@@ -304,10 +304,19 @@ def meeting_markdown(meeting_id: str):
     return PlainTextResponse(export_markdown(meeting_id).read_text(encoding="utf-8"))
 
 
+def _slug(text: str, fallback: str = "meeting") -> str:
+    """A safe, human-friendly filename stem from a meeting title."""
+    import re
+    s = re.sub(r"[^\w\s-]", "", (text or "").strip())
+    s = re.sub(r"[\s_-]+", "-", s).strip("-")
+    return s[:60] or fallback
+
+
 @app.get("/api/meetings/{meeting_id}/export")
 def meeting_export(meeting_id: str, fmt: str = "txt"):
     """Export the transcript/notes. fmt: srt | vtt | txt | json | md."""
-    if not db.get_meeting(meeting_id):
+    m = db.get_meeting(meeting_id)
+    if not m:
         raise HTTPException(404, "Meeting not found")
     fmt = fmt.lower()
     if fmt == "md":
@@ -331,7 +340,7 @@ def meeting_export(meeting_id: str, fmt: str = "txt"):
         else:
             raise HTTPException(400, f"Unknown format '{fmt}'")
     return PlainTextResponse(body, media_type=media, headers={
-        "Content-Disposition": f'attachment; filename="{meeting_id}.{fmt}"'})
+        "Content-Disposition": f'attachment; filename="{_slug(m.title)}.{fmt}"'})
 
 
 @app.get("/api/meetings/{meeting_id}/clip")
@@ -346,8 +355,10 @@ def meeting_clip(meeting_id: str, start: float, end: float):
     out = rec / f"clip_{int(start)}_{int(end)}.wav"
     if not extract_clip(src, start, end, out, pad=0.3):
         raise HTTPException(400, "Empty or invalid clip range")
+    m = db.get_meeting(meeting_id)
+    name = f"{_slug(m.title) if m else meeting_id}-clip-{int(start)}s"
     return FileResponse(str(out), media_type="audio/wav", headers={
-        "Content-Disposition": f'attachment; filename="{meeting_id}_clip.wav"'})
+        "Content-Disposition": f'attachment; filename="{name}.wav"'})
 
 
 @app.get("/api/meetings/{meeting_id}/highlight-reel")
@@ -367,8 +378,9 @@ def meeting_highlight_reel(meeting_id: str):
     out = s.recordings_dir / meeting_id / "highlight_reel.wav"
     if not export_highlight_reel(s.recordings_dir / meeting_id, spans, out):
         raise HTTPException(404, "No audio for this meeting")
+    m = db.get_meeting(meeting_id)
     return FileResponse(str(out), media_type="audio/wav", headers={
-        "Content-Disposition": f'attachment; filename="{meeting_id}_highlights.wav"'})
+        "Content-Disposition": f'attachment; filename="{_slug(m.title) if m else meeting_id}-highlights.wav"'})
 
 
 @app.get("/api/meetings/{meeting_id}/audio")

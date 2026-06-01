@@ -57,6 +57,23 @@ def test_empty_search_returns_empty_list():
         assert c.get("/api/search", params={"q": "   "}).json() == []
 
 
+def test_slug_makes_friendly_filenames():
+    from app.server.main import _slug
+    assert _slug("Q3 Planning / Roadmap!") == "Q3-Planning-Roadmap"
+    assert _slug("  weird___name  ") == "weird-name"
+    assert _slug("") == "meeting" and _slug("***") == "meeting"   # fallback
+    assert len(_slug("x" * 200)) <= 60                            # capped
+
+
+def test_export_filename_uses_title(_=None):
+    mid = _mk("srv-fname", title="Q3 Planning")
+    db.replace_segments(mid, [Segment(start=0, end=1, text="hi", speaker="Me",
+                                      source="batch")], source="batch")
+    with TestClient(app) as c:
+        r = c.get(f"/api/meetings/{mid}/export", params={"fmt": "txt"})
+        assert 'filename="Q3-Planning.txt"' in r.headers.get("content-disposition", "")
+
+
 def test_export_unknown_format_400s():
     mid = _mk("srv-bad-fmt")
     db.replace_segments(mid, [Segment(start=0, end=1, text="hi", speaker="Me",
