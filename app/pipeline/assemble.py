@@ -27,7 +27,10 @@ def _split_long(seg: Segment, max_len: float) -> list[Segment]:
     words = seg.text.split()
     if dur <= max_len or len(words) < 2:
         return [seg]
-    n = int(dur // max_len) + 1
+    # Cap chunks at the word count: with more buckets than words, the leading
+    # buckets come out empty and the first cue starts late (a 2-word / 60s
+    # segment otherwise left 0-20s with no subtitle). Never more chunks than words.
+    n = min(int(dur // max_len) + 1, len(words))
     out: list[Segment] = []
     for i in range(n):
         ws = words[i * len(words) // n:(i + 1) * len(words) // n]

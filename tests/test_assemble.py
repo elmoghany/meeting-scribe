@@ -74,6 +74,16 @@ def test_merge_splits_overlong_raw_segment():
     assert " ".join(m.text for m in out).split() == seg.text.split()
 
 
+def test_split_sparse_overlong_segment_has_no_empty_leading_cue():
+    # 2 words over 60s would compute 3 buckets and leave the first (0-20s) empty,
+    # so the first subtitle started late. Chunks are now capped at the word count.
+    out = assemble._split_long(_seg(0, 60, "hello world", "Me"), 30.0)
+    assert len(out) == 2
+    assert out[0].start == 0.0 and out[0].text == "hello"   # first cue at t=0, not 20
+    assert abs(out[-1].end - 60.0) < 1e-6                    # still spans the full segment
+    assert all(o.text for o in out)                          # no empty cues
+
+
 def test_merge_does_not_split_short_or_single_word():
     assert len(assemble.merge_adjacent([_seg(0, 50, "word", "Me")], max_len=30.0)) == 1
     assert len(assemble.merge_adjacent([_seg(0, 5, "a b c", "Me")], max_len=30.0)) == 1
