@@ -24,6 +24,11 @@ CREATE TABLE segments (
     start REAL NOT NULL, end REAL NOT NULL, speaker TEXT NOT NULL DEFAULT 'Unknown',
     text TEXT NOT NULL, source TEXT NOT NULL DEFAULT 'live'
 );
+CREATE TABLE action_items (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    meeting_id TEXT NOT NULL REFERENCES meetings(id) ON DELETE CASCADE,
+    text TEXT NOT NULL, owner TEXT, due TEXT, done INTEGER NOT NULL DEFAULT 0
+);
 """
 
 
@@ -34,6 +39,8 @@ def _seed_old_db(path):
                 "VALUES ('m1', 'Old Meeting', 'meet', 1.0)")
     con.execute("INSERT INTO segments (meeting_id, start, end, speaker, text, source) "
                 "VALUES ('m1', 0, 1, 'Me', 'hello world', 'batch')")
+    con.execute("INSERT INTO action_items (meeting_id, text, done) "
+                "VALUES ('m1', 'pre-existing task', 0)")
     con.commit()
     con.close()
 
@@ -48,14 +55,20 @@ def test_old_db_migrates_in_place_and_keeps_data(tmp_path, monkeypatch):
 
         seg_cols = {r[1] for r in conn.execute("PRAGMA table_info(segments)")}
         mtg_cols = {r[1] for r in conn.execute("PRAGMA table_info(meetings)")}
+        act_cols = {r[1] for r in conn.execute("PRAGMA table_info(action_items)")}
         assert "confidence" in seg_cols             # added by migration
         assert "template" in mtg_cols               # added by migration
+        assert "source" in act_cols                 # added by migration
 
         # pre-existing data survived
         m = db.get_meeting("m1")
         assert m and m.title == "Old Meeting"
         segs = db.get_segments("m1")
         assert len(segs) == 1 and segs[0].text == "hello world"
+        # a pre-existing action item is migrated to source='auto' (so a future
+        # save_action_items can replace it; new manual ones won't be wiped)
+        src = conn.execute("SELECT source FROM action_items WHERE meeting_id='m1'").fetchone()
+        assert src[0] == "auto"
 
         # tables the old DB lacked were created
         names = {r[0] for r in conn.execute(
