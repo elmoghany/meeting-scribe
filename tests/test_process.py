@@ -72,3 +72,24 @@ def test_compute_pipeline_no_audio_raises(tmp_path, monkeypatch):
     import pytest
     with pytest.raises(RuntimeError, match="No audio"):
         process.compute_pipeline(str(tmp_path))
+
+
+def test_compute_pipeline_notes_backend_error_falls_back_to_extractive(tmp_path, monkeypatch):
+    # A configured LLM backend that OOMs/errors at inference must NOT lose the
+    # transcript — fall back to extractive notes so the meeting is still saved.
+    _mk_audio(tmp_path)
+    monkeypatch.setattr(process, "Transcriber", _FakeTranscriber)
+    monkeypatch.setattr(diarize, "label_speakers", lambda w, s: s)
+    from app.pipeline import notes
+
+    class _BoomBackend:
+        backend = "llamacpp"
+
+        def summarize(self, segs, template=None):
+            raise RuntimeError("CUDA out of memory")
+
+    monkeypatch.setattr(notes, "get_notes_backend", lambda: _BoomBackend())
+    res = process.compute_pipeline(str(tmp_path))
+    assert res.segments                     # transcript preserved despite notes failure
+    assert res.backend == "extractive"      # fell back from the broken backend
+    assert res.summary is not None

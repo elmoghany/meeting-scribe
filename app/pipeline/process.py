@@ -105,13 +105,21 @@ def compute_pipeline(audio_dir: str, batch_model: str | None = None) -> Pipeline
 
     segments = assemble.merge_adjacent(sorted(segments, key=lambda x: x.start))
 
-    from .notes import get_notes_backend
+    from .notes import ExtractiveNotes, get_notes_backend
     backend = get_notes_backend()
-    _log(f"generating notes with '{backend.backend}' backend ...")
-    summary, action_items = backend.summarize(segments)
+    backend_name = backend.backend
+    _log(f"generating notes with '{backend_name}' backend ...")
+    try:
+        summary, action_items = backend.summarize(segments)
+    except Exception as e:  # LLM inference can OOM / error mid-generation
+        _log(f"notes backend '{backend_name}' failed ({e}); falling back to extractive "
+             "so the transcript is preserved.")
+        ex = ExtractiveNotes()
+        summary, action_items = ex.summarize(segments)
+        backend_name = ex.backend
     duration = max((seg.end for seg in segments), default=0.0)
     return PipelineResult(segments, summary, action_items, language, duration,
-                          backend.backend, embeddings)
+                          backend_name, embeddings)
 
 
 def apply_profiles(res: PipelineResult) -> dict:
