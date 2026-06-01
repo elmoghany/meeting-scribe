@@ -326,6 +326,21 @@ function seekTo(t) {
   p.play().catch(() => {});
 }
 
+// Scroll to + briefly flash the transcript line at time t (used by global search
+// so a hit takes you straight to the line). Seeks the player but doesn't autoplay.
+function jumpToTime(t) {
+  const p = $("player");
+  if (p.getAttribute("src")) p.currentTime = t;
+  const segs = [...$("transcript").querySelectorAll(".seg")];
+  const target = segs.find((el) => +el.dataset.start <= t && t <= +el.dataset.end)
+    || segs.reduce((a, el) => Math.abs(+el.dataset.start - t) < Math.abs(+a.dataset.start - t) ? el : a, segs[0]);
+  if (target) {
+    target.scrollIntoView({ block: "center" });
+    target.classList.add("flash");
+    setTimeout(() => target.classList.remove("flash"), 1600);
+  }
+}
+
 // highlight the transcript line currently playing
 let _lastActive = null;
 function highlightPlaying() {
@@ -725,7 +740,7 @@ $("search").addEventListener("input", (e) => {
       const ss = String(Math.floor(h.start % 60)).padStart(2, "0");
       div.innerHTML = `<b>${escapeHtml(h.title)}</b> · ${h.speaker} ${mm}:${ss}<br>` +
         escapeHtml(h.snippet).replace(/\[/g, "<mark>").replace(/\]/g, "</mark>");
-      div.onclick = () => openMeeting(h.meeting_id);
+      div.onclick = async () => { await openMeeting(h.meeting_id); jumpToTime(h.start); };
       box.appendChild(div);
     }
     if (!hits.length) box.innerHTML = `<p class="muted">No matches.</p>`;
