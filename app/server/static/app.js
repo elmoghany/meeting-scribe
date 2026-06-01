@@ -478,7 +478,9 @@ async function openMeeting(id) {
   const d = await api("/api/meetings/" + id);
   $("detail-card").classList.remove("hidden");
   const player = $("player");
+  $("audio-missing").classList.add("hidden");
   player.src = "/api/meetings/" + id + "/audio";
+  player.onerror = () => $("audio-missing").classList.remove("hidden");  // freed/missing audio
   _lastActive = null;
   $("detail-title").textContent = d.meeting.title;
   const mins = (d.meeting.duration_sec || 0) / 60;
