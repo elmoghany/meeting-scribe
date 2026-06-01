@@ -225,6 +225,17 @@ def test_extractive_summary_nonempty():
     assert any("oauth" in d.lower() or "decided" in d.lower() for d in s.decisions)
 
 
+def test_extractive_summary_degenerate_input_never_crashes():
+    # A meeting transcribed to silence/music, or whitespace, must yield a valid
+    # (empty) Summary — not crash the notes step.
+    empty = notes.extractive_summary("")
+    assert empty.overview == "" and empty.key_points == [] and empty.decisions == []
+    assert notes.extractive_summary("   \n\t  ").key_points == []
+    # all-stopword content (no scorable tokens) falls back to the raw sentences
+    s = notes.extractive_summary("the the the. and of the.")
+    assert s is not None and isinstance(s.key_points, list)   # no exception
+
+
 def test_extractive_backend_summarize_and_chat():
     backend = notes.ExtractiveNotes()
     segs = [_seg("Let's finalize the budget at 50k.", "Sam"),
