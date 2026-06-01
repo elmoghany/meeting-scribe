@@ -384,6 +384,19 @@ def test_decision_rejects_unmade_decisions():
     assert decs("I decided to grab lunch earlier today.") == []   # personal, not "we"
 
 
+def test_vague_relative_duration_does_not_override_hedge():
+    # a firm deadline overrides a hedge, but a vague "in two weeks or so" must not
+    def is_item(text):
+        return bool(notes.extract_action_items([_seg(text)]))
+    assert not is_item("Maybe we should look into it in two weeks or so.")  # vague -> reject
+    assert not is_item("Perhaps we could revisit this in a month.")          # vague -> reject
+    assert is_item("I will finish the report in two weeks.")                 # strong commit
+    assert is_item("Please review it by the 15th.")                          # firm deadline
+    # the relative duration is still captured for display on genuine items
+    items = notes.extract_action_items([_seg("I will finish it in two weeks.")])
+    assert items[0].due == "in two weeks"
+
+
 def test_due_date_extraction_phrasings():
     # the deadline phrasings that show up in real meetings
     def due(text):

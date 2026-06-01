@@ -384,8 +384,14 @@ def _is_actionable(sent: str) -> bool:
         return False                       # "let's get started / dive in" opens talk, not a task
     if len(s.split()) < 4:
         return False                       # "Let's see." / "I'll check." fragments
-    if _HEDGE.search(s) and not (_STRONG_COMMIT.search(s) or _DUE.search(s)):
-        return False                       # "maybe we should look into it someday"
+    if _HEDGE.search(s):
+        # A hedge is overridden only by a strong commitment or a FIRM deadline.
+        # A vague relative duration ("in a couple weeks", prep == 'in') is not
+        # firm enough to rescue "maybe we should look into it in two weeks".
+        due = _DUE.search(s)
+        firm_due = bool(due and due.group(1).lower() != "in")
+        if not (_STRONG_COMMIT.search(s) or firm_due):
+            return False                   # "maybe we should look into it someday"
     return True
 
 
