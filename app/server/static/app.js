@@ -713,13 +713,13 @@ $("btn-ask-all").onclick = async () => {
       for (const s of r.sources) {
         const mm = String(Math.floor(s.start / 60)).padStart(2, "0");
         const ss = String(Math.floor(s.start % 60)).padStart(2, "0");
-        html += `<div class="hit" data-id="${s.meeting_id}"><b>${escapeHtml(s.title)}</b> ` +
-          `· ${escapeHtml(s.speaker)} ${mm}:${ss}</div>`;
+        html += `<div class="hit" data-id="${s.meeting_id}" data-start="${s.start}">` +
+          `<b>${escapeHtml(s.title)}</b> · ${escapeHtml(s.speaker)} ${mm}:${ss}</div>`;
       }
     }
     $("ask-answer").innerHTML = html;
     $("ask-answer").querySelectorAll(".hit[data-id]").forEach((el) =>
-      { el.onclick = () => openMeeting(el.dataset.id); });
+      { el.onclick = async () => { await openMeeting(el.dataset.id); jumpToTime(+el.dataset.start); }; });
   } catch (e) { $("ask-answer").innerHTML = `<div class="answer">${e.message}</div>`; }
 };
 $("ask-q").addEventListener("keydown", (e) => { if (e.key === "Enter") $("btn-ask-all").click(); });
