@@ -608,6 +608,29 @@ def delete_annotation(annotation_id: int) -> None:
         c.execute("DELETE FROM annotations WHERE id=?", (annotation_id,))
 
 
+def reanchor_annotations(meeting_id: str, anchors: list[tuple[int, float]]) -> int:
+    """Re-point annotations to the current batch segment covering each given
+    time. Used after reprocess (re-transcription) replaces segments with new IDs,
+    so highlights/comments stay attached to roughly the same moment instead of
+    orphaning. `anchors` = [(annotation_id, original_start_time)]. Returns count."""
+    segs = get_segments(meeting_id, source="batch")
+    if not segs or not anchors:
+        return 0
+
+    def nearest(t: float) -> int:
+        return min(segs, key=lambda s: 0.0 if s.start <= t <= s.end
+                   else min(abs(s.start - t), abs(s.end - t))).id
+
+    n = 0
+    with cursor() as c:
+        for ann_id, t in anchors:
+            if t is None:
+                continue
+            c.execute("UPDATE annotations SET segment_id=? WHERE id=?", (nearest(t), ann_id))
+            n += 1
+    return n
+
+
 # --------------------------------------------------------------------------- #
 # search
 # --------------------------------------------------------------------------- #

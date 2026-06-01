@@ -11,6 +11,29 @@ def _mk(meeting_id="m-test"):
     return meeting_id
 
 
+def test_reanchor_annotations_after_resegment():
+    mid = _mk("m-reanchor")
+    db.replace_segments(mid, [
+        Segment(start=0, end=5, text="intro", speaker="Me", source="batch"),
+        Segment(start=5, end=10, text="the key point", speaker="Sam", source="batch"),
+    ], source="batch")
+    old = {s.start: s.id for s in db.get_segments(mid, source="batch")}
+    hi_id = db.add_annotation(mid, kind="highlight", segment_id=old[5.0])   # star the 5-10s seg
+    # capture anchor time (what the reprocess endpoint does before run_batch)
+    anchors = [(a["id"], 6.0) for a in db.list_annotations(mid)]            # moment ~6s
+    # reprocess re-transcribes -> NEW segments / IDs at similar times
+    db.replace_segments(mid, [
+        Segment(start=0, end=4, text="intro again", speaker="Me", source="batch"),
+        Segment(start=4, end=11, text="the key point restated", speaker="Sam", source="batch"),
+    ], source="batch")
+    moved = db.reanchor_annotations(mid, anchors)
+    assert moved == 1
+    new_seg_at_6 = next(s for s in db.get_segments(mid, source="batch")
+                        if s.start <= 6.0 <= s.end)
+    ann = next(a for a in db.list_annotations(mid) if a["id"] == hi_id)
+    assert ann["segment_id"] == new_seg_at_6.id        # highlight re-attached, not orphaned
+
+
 def test_regenerate_preserves_manual_items_and_done_state():
     mid = _mk("m-regen-actions")
     # initial auto extraction, one already marked done

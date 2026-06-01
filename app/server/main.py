@@ -511,12 +511,19 @@ def reprocess(meeting_id: str):
     s = get_settings()
     audio_dir = str(s.recordings_dir / meeting_id)
 
+    # capture each annotation's anchor TIME before re-transcription churns segment IDs
+    old = {s.id: s.start for s in db.get_segments(meeting_id, source="batch")}
+    anchors = [(a["id"], old.get(a["segment_id"])) for a in db.list_annotations(meeting_id)
+               if a["segment_id"] in old]
+
     def _bg():
         try:
             stats = run_batch(meeting_id, audio_dir,
                               progress=lambda m: _emit({"type": "progress",
                                                         "meeting_id": meeting_id,
                                                         "message": str(m)}))
+            if anchors:                       # re-attach highlights/comments to the new segments
+                db.reanchor_annotations(meeting_id, anchors)
             _emit({"type": "processed", "meeting_id": meeting_id, **stats})
         except Exception as e:
             _emit({"type": "error", "meeting_id": meeting_id, "message": str(e)})
