@@ -210,6 +210,21 @@ def test_delete_batch_empty_is_noop():
             "deleted": [], "count": 0}
 
 
+def test_edit_segment_and_markdown_endpoints():
+    mid = _mk("srv-editseg")
+    db.replace_segments(mid, [Segment(start=0, end=2, text="helo wrld", speaker="Me",
+                                      source="batch")], source="batch")
+    sid = db.get_segments(mid, source="batch")[0].id
+    with TestClient(app) as c:
+        assert c.patch(f"/api/segments/{sid}", json={}).status_code == 400        # nothing
+        r = c.patch(f"/api/segments/{sid}", json={"text": "hello world"})
+        assert r.status_code == 200 and r.json()["meeting_id"] == mid             # fixed
+        assert c.patch("/api/segments/999999", json={"text": "x"}).status_code == 404
+        md = c.get(f"/api/meetings/{mid}/markdown")                                # notes doc
+        assert md.status_code == 200 and "hello world" in md.text
+    assert db.get_segments(mid, source="batch")[0].text == "hello world"
+
+
 def test_action_item_lifecycle_and_comment():
     mid = _mk("srv-ai-crud")
     db.replace_segments(mid, [Segment(start=0, end=2, text="hi", speaker="Me",
