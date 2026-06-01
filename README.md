@@ -68,7 +68,7 @@ token to download the gated pyannote diarization weights once.
 | ✏️ **Rename & merge speakers** | Turn "Speaker 1" into real names in one click; **merge** two labels when diarization over-splits. Flows to transcript, exports, analytics. |
 | 📝 **Editable transcript & notes** | Double-click a line to fix a mis-transcription; edit the AI summary/key-points/decisions inline. |
 | 🔤 **Custom vocabulary** | Teach it names/jargon (dashboard or `.env`) to bias transcription — better proper nouns. |
-| 🔎 **Search everything** | SQLite FTS5 full-text search across every past meeting. |
+| 🔎 **Search everything** | SQLite FTS5 full-text search across every past meeting — stemmed, so "hire" also finds "hiring/hired", with the matched word highlighted in context. |
 | 🗂️ **Bulk manage** | Multi-select meetings in the sidebar and delete in one go (audio + notes). |
 | 📝 **Export anywhere** | Markdown, plain text, **SRT/VTT subtitles**, a self-contained **HTML page**, and JSON. |
 | 🖥️ **Local web dashboard** | Start/stop, live transcript, browse, rename speakers, chat. |
