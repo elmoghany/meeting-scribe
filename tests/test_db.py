@@ -11,6 +11,18 @@ def _mk(meeting_id="m-test"):
     return meeting_id
 
 
+def test_search_tolerates_malformed_fts_queries():
+    mid = _mk("m-search-safe")
+    db.add_segments(mid, [Segment(start=0, end=2, text="we discussed the budget plan",
+                                  speaker="Me", source="batch")])
+    # stray quote / FTS operators must NOT raise (they used to 500 the endpoint)
+    for q in ['budget"', 'budget AND', 'NEAR(', 'plan OR budget', '"unbalanced']:
+        hits = db.search(q)                         # no exception
+        assert isinstance(hits, list)
+    # the sanitized fallback still finds the real word
+    assert any("budget" in (h["snippet"] or "").lower() for h in db.search('budget"'))
+
+
 def test_reanchor_annotations_after_resegment():
     mid = _mk("m-reanchor")
     db.replace_segments(mid, [

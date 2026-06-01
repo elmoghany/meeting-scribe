@@ -634,21 +634,31 @@ def reanchor_annotations(meeting_id: str, anchors: list[tuple[int, float]]) -> i
 # --------------------------------------------------------------------------- #
 # search
 # --------------------------------------------------------------------------- #
+def _fts_safe(query: str) -> str:
+    """Fallback FTS query: each word as a quoted literal (AND-ed), so user input
+    with stray quotes or FTS operators can't break the MATCH parser."""
+    import re
+    return " ".join(f'"{t}"' for t in re.findall(r"\w+", query))
+
+
 def search(query: str, limit: int = 50) -> list[dict]:
     """Full-text search across every meeting's transcript. Returns hits with a
-    highlighted snippet, ordered by relevance."""
+    highlighted snippet, ordered by relevance. Tolerates malformed FTS input
+    (e.g. a stray quote) by falling back to a sanitized literal-term query."""
+    sql = """
+        SELECT s.meeting_id, m.title, s.speaker, s.start,
+               snippet(segments_fts, 0, '[', ']', ' … ', 12) AS snippet
+        FROM segments_fts
+        JOIN segments s ON s.id = segments_fts.rowid
+        JOIN meetings m ON m.id = s.meeting_id
+        WHERE segments_fts MATCH ?
+        ORDER BY bm25(segments_fts)
+        LIMIT ?
+    """
     with cursor() as c:
-        rows = c.execute(
-            """
-            SELECT s.meeting_id, m.title, s.speaker, s.start,
-                   snippet(segments_fts, 0, '[', ']', ' … ', 12) AS snippet
-            FROM segments_fts
-            JOIN segments s ON s.id = segments_fts.rowid
-            JOIN meetings m ON m.id = s.meeting_id
-            WHERE segments_fts MATCH ?
-            ORDER BY bm25(segments_fts)
-            LIMIT ?
-            """,
-            (query, limit),
-        ).fetchall()
+        try:
+            rows = c.execute(sql, (query, limit)).fetchall()
+        except sqlite3.OperationalError:        # FTS syntax error from raw user input
+            safe = _fts_safe(query)
+            rows = c.execute(sql, (safe, limit)).fetchall() if safe else []
     return [dict(r) for r in rows]
