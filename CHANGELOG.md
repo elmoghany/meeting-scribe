@@ -83,6 +83,9 @@ All notable changes to MeetingScribe are documented here. Format loosely follows
 - **Custom vocabulary** — bias transcription toward names/jargon.
 - **Clips & highlight reels** — export a line or all starred lines as audio.
 - **Self-contained HTML export** — a single shareable file, no external assets.
+- **Stemmed full-text search** — searching "hire" now finds "hiring/hired/hires"
+  (and "decide"→"decided", "migrate"→"migrating"). Existing databases are
+  upgraded in place; no re-transcription needed.
 - **Bulk meeting delete** and a **sidebar title filter**.
 - **Multi-speaker verification harness** (`scripts/verify_multispeaker.py`) —
   scores ASR WER + diarization speaker-count accuracy; the tool that surfaced the
