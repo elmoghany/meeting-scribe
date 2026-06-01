@@ -53,7 +53,8 @@ CREATE TABLE IF NOT EXISTS action_items (
     text        TEXT NOT NULL,
     owner       TEXT,
     due         TEXT,
-    done        INTEGER NOT NULL DEFAULT 0
+    done        INTEGER NOT NULL DEFAULT 0,
+    source      TEXT NOT NULL DEFAULT 'auto'
 );
 CREATE INDEX IF NOT EXISTS idx_action_meeting ON action_items(meeting_id);
 
@@ -134,6 +135,10 @@ def _connect() -> sqlite3.Connection:
         mcols = {r[1] for r in _conn.execute("PRAGMA table_info(meetings)").fetchall()}
         if "template" not in mcols:
             _conn.execute("ALTER TABLE meetings ADD COLUMN template TEXT")
+        acols = {r[1] for r in _conn.execute("PRAGMA table_info(action_items)").fetchall()}
+        if "source" not in acols:
+            _conn.execute(
+                "ALTER TABLE action_items ADD COLUMN source TEXT NOT NULL DEFAULT 'auto'")
         _conn.commit()
     return _conn
 
@@ -445,12 +450,21 @@ def get_summary(meeting_id: str) -> Summary | None:
 
 
 def save_action_items(meeting_id: str, items: list[ActionItem]) -> None:
+    """Replace the AUTO-extracted action items for a meeting (e.g. on
+    regenerate-notes). Preserves user-added ('manual') items and carries over
+    the done-state of any auto item whose text is unchanged, so regenerating
+    notes never silently destroys completed/added work."""
     with cursor() as c:
-        c.execute("DELETE FROM action_items WHERE meeting_id = ?", (meeting_id,))
+        prev_done = {(r["text"] or "").strip().lower(): r["done"] for r in c.execute(
+            "SELECT text, done FROM action_items WHERE meeting_id = ?", (meeting_id,))}
+        c.execute("DELETE FROM action_items WHERE meeting_id = ? AND source = 'auto'",
+                  (meeting_id,))
         c.executemany(
-            "INSERT INTO action_items(meeting_id,text,owner,due,done)"
-            " VALUES (?,?,?,?,?)",
-            [(meeting_id, a.text, a.owner, a.due, int(a.done)) for a in items],
+            "INSERT INTO action_items(meeting_id,text,owner,due,done,source)"
+            " VALUES (?,?,?,?,?,'auto')",
+            [(meeting_id, a.text, a.owner, a.due,
+              int(prev_done.get((a.text or "").strip().lower(), int(a.done))))
+             for a in items],
         )
 
 
@@ -468,9 +482,11 @@ def set_action_done(item_id: int, done: bool) -> None:
 
 
 def add_action_item(meeting_id: str, item: ActionItem) -> int:
+    """User-added item — tagged source='manual' so regenerate-notes won't wipe it."""
     with cursor() as c:
         cur = c.execute(
-            "INSERT INTO action_items(meeting_id,text,owner,due,done) VALUES (?,?,?,?,?)",
+            "INSERT INTO action_items(meeting_id,text,owner,due,done,source)"
+            " VALUES (?,?,?,?,?,'manual')",
             (meeting_id, item.text, item.owner, item.due, int(item.done)))
         return int(cur.lastrowid)
 

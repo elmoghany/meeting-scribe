@@ -11,6 +11,27 @@ def _mk(meeting_id="m-test"):
     return meeting_id
 
 
+def test_regenerate_preserves_manual_items_and_done_state():
+    mid = _mk("m-regen-actions")
+    # initial auto extraction, one already marked done
+    db.save_action_items(mid, [
+        ActionItem(text="send the report", done=True),
+        ActionItem(text="book the room", done=False),
+    ])
+    # user adds a manual item and it must survive regeneration
+    db.add_action_item(mid, ActionItem(text="call the vendor"))
+    # regenerate: same auto set re-extracted (book room dropped, new item appears)
+    db.save_action_items(mid, [
+        ActionItem(text="send the report", done=False),   # re-extracted, done reset upstream
+        ActionItem(text="prepare the slides", done=False),
+    ])
+    items = {a.text: a for a in db.get_action_items(mid)}
+    assert "call the vendor" in items                 # manual item preserved
+    assert items["send the report"].done is True      # done-state carried over by text match
+    assert "prepare the slides" in items              # new auto item added
+    assert "book the room" not in items               # stale auto item replaced
+
+
 def test_meeting_stats_counts_open_actions():
     mid = _mk("m-openactions")
     db.add_segments(mid, [Segment(start=0, end=1, text="hi there", speaker="Me",
