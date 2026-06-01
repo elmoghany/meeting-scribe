@@ -134,3 +134,35 @@ def test_zoom_server_to_server_token(monkeypatch):
         if tok_path.exists():
             tok_path.unlink()
         config.get_settings.cache_clear()
+
+
+def test_zoom_get_uses_bearer_auth(monkeypatch):
+    monkeypatch.setenv("ZOOM_CLIENT_ID", "cid")
+    monkeypatch.setenv("ZOOM_CLIENT_SECRET", "sec")
+    monkeypatch.delenv("ZOOM_ACCOUNT_ID", raising=False)
+    config.get_settings.cache_clear()
+    tok_path = zoom._token_path()
+    try:
+        tok_path.write_text(json.dumps(
+            {"access_token": "AT", "refresh_token": "RT", "expires_at": time.time() + 3600}))
+        captured = {}
+
+        class _R:
+            def raise_for_status(self):
+                pass
+
+            def json(self):
+                return {"id": "u1", "email": "a@b.c"}
+
+        def fake_get(url, headers=None, params=None, timeout=None):
+            captured["url"], captured["headers"] = url, headers
+            return _R()
+
+        monkeypatch.setattr(httpx, "get", fake_get)
+        assert zoom.me()["id"] == "u1"
+        assert captured["url"].endswith("/users/me")                 # routed through _get
+        assert captured["headers"]["Authorization"] == "Bearer AT"   # bearer auth from token
+    finally:
+        if tok_path.exists():
+            tok_path.unlink()
+        config.get_settings.cache_clear()
