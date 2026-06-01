@@ -82,6 +82,53 @@ def test_run_bot_invokes_binary_with_jwt(monkeypatch):
     assert info["audio"] and Path(info["audio"]).exists()
 
 
+def test_run_bot_derives_meeting_number_from_join_url(monkeypatch):
+    monkeypatch.setenv("ZOOM_SDK_KEY", "K")
+    monkeypatch.setenv("ZOOM_SDK_SECRET", "S")
+    monkeypatch.setenv("MEETINGSCRIBE_BOT_BINARY", "echo")
+    monkeypatch.delenv("MEETINGSCRIBE_BOT_DOCKER_IMAGE", raising=False)
+    get_settings.cache_clear()
+    captured = {}
+
+    class _P:
+        returncode = 0
+        stderr = ""
+
+    def fake_run(cmd, **kw):
+        captured["cmd"] = cmd
+        Path(cmd[cmd.index("--audio-out") + 1]).write_bytes(b"RIFF")
+        return _P()
+
+    monkeypatch.setattr("subprocess.run", fake_run)
+    # no meeting_number given -> must parse it (and the passcode) out of join_url
+    runner.run_bot(meeting_number="", passcode="", meeting_id="m-url",
+                   join_url="https://us05web.zoom.us/j/555444333?pwd=SeCret")
+    cmd = captured["cmd"]
+    assert "555444333" in cmd and "SeCret" in cmd
+
+
+def test_run_bot_uses_docker_when_image_configured(monkeypatch):
+    monkeypatch.setenv("ZOOM_SDK_KEY", "K")
+    monkeypatch.setenv("ZOOM_SDK_SECRET", "S")
+    monkeypatch.setenv("MEETINGSCRIBE_BOT_DOCKER_IMAGE", "meetingscribe/bot:latest")
+    get_settings.cache_clear()
+    captured = {}
+
+    class _P:
+        returncode = 0
+        stderr = ""
+
+    def fake_run(cmd, **kw):
+        captured["cmd"] = cmd
+        return _P()
+
+    monkeypatch.setattr("subprocess.run", fake_run)
+    runner.run_bot(meeting_number="42", passcode="pw", meeting_id="m-docker")
+    cmd = captured["cmd"]
+    assert cmd[0] == "docker" and "meetingscribe/bot:latest" in cmd   # containerized launch
+    assert "-v" in cmd and any(c.startswith("/recordings/") for c in cmd)  # volume + mapped out
+
+
 def test_run_bot_requires_sdk_credentials(monkeypatch):
     monkeypatch.delenv("ZOOM_SDK_KEY", raising=False)
     monkeypatch.delenv("ZOOM_SDK_SECRET", raising=False)

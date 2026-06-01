@@ -61,6 +61,55 @@ def test_empty_search_returns_empty_list():
         assert c.get("/api/search", params={"q": "   "}).json() == []
 
 
+def _wait_for(events, *types, timeout=5.0):
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        if any(e["type"] in types for e in events):
+            return
+        time.sleep(0.02)
+
+
+def test_bot_record_dispatch_happy_path(monkeypatch):
+    from app.server import main
+    from bot import runner as bot_runner
+    events = []
+    monkeypatch.setattr(main, "_emit", events.append)
+    monkeypatch.setattr(bot_runner, "parse_join_url", lambda url: ("555", "pw"))
+    monkeypatch.setattr(bot_runner, "run_bot",
+                        lambda **k: {"duration_sec": 42.0, "audio_dir": "/tmp/aud",
+                                     "returncode": 0, "audio": "system.wav"})
+    monkeypatch.setattr(main, "run_batch", lambda mid, audio_dir, progress=None: {"segments": 2})
+    db.reset_connection()
+
+    main._bot_record("Scheduled Standup", "https://zoom.us/j/555?pwd=pw")
+    _wait_for(events, "processed", "error")
+    types = [e["type"] for e in events]
+    assert types[:2] == ["bot_started", "bot_finished"] or "bot_started" in types
+    assert "bot_finished" in types and "processed" in types
+    mid = next(e["meeting_id"] for e in events if e["type"] == "bot_started")
+    assert db.get_meeting(mid).status == "processing"        # meeting created + advanced
+
+
+def test_bot_record_dispatch_error_path(monkeypatch):
+    from app.server import main
+    from bot import runner as bot_runner
+    events = []
+    monkeypatch.setattr(main, "_emit", events.append)
+    monkeypatch.setattr(bot_runner, "parse_join_url", lambda url: ("555", "pw"))
+
+    def boom(**k):
+        raise RuntimeError("bot failed to join")
+    monkeypatch.setattr(bot_runner, "run_bot", boom)
+    db.reset_connection()
+
+    main._bot_record("Doomed Meeting", "https://zoom.us/j/555")
+    _wait_for(events, "processed", "error")
+    err = [e for e in events if e["type"] == "error"]
+    assert err and "bot" in err[0]["message"]
+    mid = next(e["meeting_id"] for e in events if e["type"] == "bot_started")
+    assert db.get_meeting(mid).status == "error"             # marked failed, not left hanging
+
+
 def test_zoom_oauth_start_not_configured_400(monkeypatch):
     from app.integrations import zoom
     monkeypatch.setattr(zoom, "is_configured", lambda: False)
