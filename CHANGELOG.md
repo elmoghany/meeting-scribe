@@ -27,6 +27,13 @@ All notable changes to MeetingScribe are documented here. Format loosely follows
   tests — see `docs/VERIFICATION.md`.
 - **SRT/VTT readability.** Subtitle exports split long segments into ~8s cues
   instead of showing a 30s paragraph on screen at once.
+- **Notes precision** (found by content audits — running the full pipeline on
+  real clips and reading the actual output): decisions no longer match bare
+  "final" ("our final episode" / Spanish "al final" were false-flagged); action
+  items reject speech acts ("I'll say/admit/be honest") and transitions ("let's
+  go to the next clip") while keeping real commitments; over-long unpunctuated
+  "sentences" (e.g. Spanish Whisper output without `.!?`) are wrapped so
+  overviews/decisions stay readable instead of a 200-word run.
 
 ### Added
 - **Auto chapters** — jump-to-topic timeline, keyword-titled, click to seek;
