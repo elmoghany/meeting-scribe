@@ -61,6 +61,67 @@ def test_empty_search_returns_empty_list():
         assert c.get("/api/search", params={"q": "   "}).json() == []
 
 
+def test_highlight_reel_without_highlights_404s():
+    mid = _mk("srv-no-highlights")
+    db.add_segments(mid, [Segment(start=0, end=2, text="hello", speaker="Me", source="batch")])
+    with TestClient(app) as c:
+        # segments exist but none are starred -> nothing to export
+        assert c.get(f"/api/meetings/{mid}/highlight-reel").status_code == 404
+
+
+def test_clip_without_audio_404s():
+    mid = _mk("srv-clip-noaudio")           # meeting row exists, but no recordings on disk
+    with TestClient(app) as c:
+        assert c.get(f"/api/meetings/{mid}/clip", params={"start": 0, "end": 1}).status_code == 404
+
+
+def test_regenerate_notes_guards():
+    with TestClient(app) as c:
+        empty = _mk("srv-regen-empty")      # no transcript yet
+        assert c.post(f"/api/meetings/{empty}/regenerate-notes").status_code == 404
+        mid = _mk("srv-regen-tmpl")
+        db.add_segments(mid, [Segment(start=0, end=2, text="hi", speaker="Me", source="batch")])
+        r = c.post(f"/api/meetings/{mid}/regenerate-notes", params={"template": "bogus"})
+        assert r.status_code == 400         # unknown template rejected before any work
+
+
+def test_templates_endpoint_lists_known_templates():
+    from app.pipeline.notes import SUMMARY_TEMPLATES
+    with TestClient(app) as c:
+        got = c.get("/api/templates").json()["templates"]
+        assert set(got) == set(SUMMARY_TEMPLATES.keys()) and got    # all template keys exposed
+
+
+def test_zoom_upcoming_not_connected_400(monkeypatch):
+    from app.integrations import zoom
+    monkeypatch.setattr(zoom, "connected", lambda: False)
+    with TestClient(app) as c:
+        r = c.get("/api/zoom/upcoming")
+        assert r.status_code == 400 and "not connected" in r.json()["detail"].lower()
+
+
+def test_zoom_upcoming_api_error_502(monkeypatch):
+    from app.integrations import zoom
+
+    def boom():
+        raise RuntimeError("token expired")
+    monkeypatch.setattr(zoom, "connected", lambda: True)
+    monkeypatch.setattr(zoom, "upcoming_meetings", boom)
+    with TestClient(app) as c:
+        assert c.get("/api/zoom/upcoming").status_code == 502    # upstream failure mapped to 502
+
+
+def test_websocket_registers_and_unregisters_client():
+    from app.server import main
+    with TestClient(app) as c:
+        before = len(main._clients)
+        with c.websocket_connect("/ws") as ws:
+            assert len(main._clients) == before + 1   # accepted + registered
+            ws.send_text("ping")                       # keepalive, ignored server-side
+        # on disconnect the finally-block discards it from the broadcast set
+        assert len(main._clients) <= before + 1
+
+
 class _FakeSession:
     """Stand-in for MeetingSession — no audio devices, no ASR threads."""
     raise_on_start = False
