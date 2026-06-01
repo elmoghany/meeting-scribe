@@ -42,6 +42,8 @@ Open a meeting from the list to:
 - **Star** key lines and add **comments**; export a starred line as an audio
   **clip**, or all starred lines as one **highlight reel**.
 - **Tag** the meeting and filter your history by tag; filter the list by title.
+  Meetings with open action items show a **☑ N** badge; tick **needs follow-up**
+  to list only those — a quick task-driven review of what's outstanding.
 - **Ask the meeting** — "What did we decide about the budget?" — or **ask across
   all meetings** for cross-meeting answers with citations.
 - **Re-summarize with a template** — standup, 1:1, interview, retro, sales

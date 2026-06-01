@@ -14,7 +14,8 @@ def test_index_served_with_core_elements():
         html = r.text
     # element ids the JS binds to — their loss = a broken dashboard
     for needle in ('id="meeting-list"', 'id="ml-filter"', 'id="ml-select"',
-                   'id="ml-del"', 'id="detail-domspk"', 'id="export-fmt"'):
+                   'id="ml-del"', 'id="ml-followup"', 'id="detail-domspk"',
+                   'id="export-fmt"'):
         assert needle in html, f"index.html missing {needle}"
     assert 'value="html"' in html          # html export option present
     assert html.rstrip().endswith("</html>")
@@ -27,8 +28,8 @@ def test_app_js_served_and_intact():
         js = r.text
     assert len(js) > 15000, "app.js suspiciously short — truncated?"
     # feature wiring that must survive edits
-    for needle in ("delete-batch", "ml-filter", "detail-domspk",
-                   "refreshMeetings", "openMeeting"):
+    for needle in ("delete-batch", "ml-filter", "ml-followup", "open_actions",
+                   "detail-domspk", "refreshMeetings", "openMeeting"):
         assert needle in js, f"app.js missing {needle}"
     # balanced curly braces (cheap truncation tripwire)
     assert js.count("{") == js.count("}"), "unbalanced braces in app.js"
