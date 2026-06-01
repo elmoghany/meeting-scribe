@@ -520,10 +520,20 @@ def to_text(segments: list[Segment]) -> str:
     return "\n".join(f"{s.speaker}: {s.text.strip()}" for s in segments)
 
 
+# Instruction/framing verbs in a *question* carry no retrieval signal — they're
+# about the asking, not the meeting content. Dropped only here (not from the
+# shared stopword set, so keyword/chapter extraction is unaffected).
+_QUESTION_NOISE = frozenset((
+    "tell show give explain describe list summarize share mention remind recall "
+    "remember anything something everything regarding"
+).split())
+
+
 def fts_query_from_question(question: str) -> str:
     """Turn a natural-language question into a safe FTS5 MATCH query for
-    cross-meeting retrieval: salient terms (stopwords/short words dropped),
-    each quoted, OR-joined for recall. Returns "" if nothing salient.
+    cross-meeting retrieval: salient terms (stopwords/short words/question-framing
+    verbs dropped), each quoted, OR-joined for recall. Returns "" if nothing
+    salient.
 
     Quoting each term neutralizes FTS operator characters; OR (not the implicit
     AND) is used so a question rarely-all-present in one segment still matches.
@@ -531,9 +541,10 @@ def fts_query_from_question(question: str) -> str:
     terms = []
     seen = set()
     for t in _tokenize(question):          # already drops stopwords + len<=2
-        if t not in seen:
-            seen.add(t)
-            terms.append('"' + t.replace('"', "") + '"')
+        if t in _QUESTION_NOISE or t in seen:
+            continue                       # "tell me about X" -> retrieve on X
+        seen.add(t)
+        terms.append('"' + t.replace('"', "") + '"')
     return " OR ".join(terms)
 
 

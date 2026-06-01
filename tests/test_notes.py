@@ -429,6 +429,14 @@ def test_prediction_will_sentences_are_not_action_items():
     assert notes.extract_action_items(segs) == []   # no false positives
 
 
+def test_fts_query_from_question_drops_framing_and_keeps_content():
+    f = notes.fts_query_from_question
+    assert f("Tell me about the budget.") == '"budget"'          # framing verb dropped
+    assert f("Summarize the roadmap discussion.") == '"roadmap" OR "discussion"'
+    assert f("What did we decide about hiring?") == '"decide" OR "hiring"'  # content kept
+    assert f("the and is of a") == ""                             # nothing salient
+
+
 def test_chat_no_match_returns_not_found():
     # a question with no token overlap with the transcript -> explicit "not found"
     backend = notes.ExtractiveNotes()
