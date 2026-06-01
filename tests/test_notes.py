@@ -45,6 +45,24 @@ def test_chapters_title_fallback_uses_salient_words_not_raw_text():
         assert any(w.capitalize() in c["title"] or w in c["title"].lower() for w in words)
 
 
+def test_parse_llm_json_valid_and_fallbacks():
+    segs = [Segment(start=0, end=3, text="We shipped v2. I'll send the report Friday.",
+                    speaker="Me", source="batch")]
+    # valid LLM JSON (with surrounding prose) parses into Summary + ActionItems
+    raw = ('Sure!\n{"overview": "We shipped v2.", "key_points": ["v2 shipped"], '
+           '"decisions": ["ship v2"], "action_items": '
+           '[{"text": "send report", "owner": "Sam", "due": "Friday"}]}\nDone.')
+    s, items = notes._parse_llm_json(raw, segs)
+    assert s.overview == "We shipped v2." and s.key_points == ["v2 shipped"]
+    assert items[0].text == "send report" and items[0].owner == "Sam" and items[0].due == "Friday"
+    # malformed JSON -> robust extractive fallback (still produces notes)
+    s2, _ = notes._parse_llm_json("not json at all", segs)
+    assert s2 is not None and s2.overview
+    # empty result (no overview/items) -> ValueError -> extractive fallback
+    s3, _ = notes._parse_llm_json('{"overview": "", "action_items": []}', segs)
+    assert s3 is not None and s3.overview      # fell back, not the empty parse
+
+
 def test_soft_wrap_keeps_trailing_remainder():
     # 50 words, cap 40 -> [40, 10]; the trailing chunk must not be dropped
     s = " ".join(f"w{i}" for i in range(50))
