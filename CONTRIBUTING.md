@@ -20,11 +20,12 @@ are lazy — the core package, the database, the pure pipeline modules, the
 extractive notes, the dispatcher, and the FastAPI app all import cleanly
 without them.
 
-## Running tests
+## Running tests & lint
 
 ```bash
-pytest -q              # full suite (~10s, no GPU/network)
+pytest -q                          # full suite (~10s, no GPU/network)
 pytest tests/test_assemble.py -v
+ruff check app/ scripts/ tests/    # lint — CI fails on any finding
 ```
 
 A `conftest.py` points `MEETINGSCRIBE_DATA_DIR` at a temp directory for the
@@ -32,8 +33,9 @@ whole session, so tests never touch your real `meetingnotes/` data.
 
 ## CI
 
-Every push + PR runs the suite on Python 3.10/3.11/3.12 via GitHub Actions
-(`.github/workflows/ci.yml`). PRs must be green to merge.
+Every push + PR runs **ruff lint** then the test suite on Python 3.10/3.11/3.12
+via GitHub Actions (`.github/workflows/ci.yml`). PRs must be green to merge, so
+run both locally first.
 
 ## Codebase tour
 
