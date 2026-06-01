@@ -49,6 +49,29 @@ All notable changes to MeetingScribe are documented here. Format loosely follows
   so the transcript is preserved; user-controlled values are escaped everywhere
   (speaker names in the transcript/search, the OAuth-callback error param); and
   every path-using endpoint validates the meeting before touching the filesystem.
+- **Extraction accuracy (content-audit pass).** Running the pipeline on realistic
+  transcripts and reading the output surfaced several recall/precision gaps, all
+  fixed and pinned with positive + negative tests:
+  - *Action items* now detect the canonical "**Sarah will handle the migration**"
+    third-person assignment (the whitelist gained task verbs like
+    handle/own/lead/coordinate, while prediction verbs stay excluded) and
+    attribute the owner to the **named person**, not the speaker.
+  - *Due dates* now parse "by next Tuesday", "before the 15th", and "in two
+    weeks" (qualified weekdays, ordinals, relative durations) — while "next
+    steps" / "on it" / "this quarter" stay unmatched, and a vague relative
+    duration no longer overrides a hedge ("maybe … in two weeks or so" stays a
+    musing).
+  - *Decisions* detect more phrasings ("the team chose", "it was decided", "we
+    are going with", "settled on") and no longer false-flag the bare noun
+    ("we need to **make a decision**", "the decision is pending").
+  - *Sentiment* dropped neutral product-logistics terms (ship/launch) from the
+    positive lexicon — they were biasing every product meeting positive ("the
+    launch failed" had cancelled out) — and added missing negatives
+    (disaster/crisis/angry).
+  - *Chapters* merge adjacent sections that resolve to the same title, so one
+    topic spilling across time buckets no longer shows as duplicate chapters.
+  - *WebVTT export* escapes `& < >` in cue text and speaker names; raw markup
+    was producing spec-invalid cues the in-browser player silently dropped.
 
 ### Added
 - **Auto chapters** — jump-to-topic timeline, keyword-titled, click to seek;
