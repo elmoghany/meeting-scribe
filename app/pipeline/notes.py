@@ -74,6 +74,12 @@ _SPEECH_ACT = re.compile(
 # task (true in meetings too: "let's go to the next agenda item"). NOT "let's go
 # ahead" (which is actional), so the trailing "to" is required.
 _TRANSITION = re.compile(rf"\blet{_AP}s go (back |over |on )?to\b", re.IGNORECASE)
+# Conversational starters with no deliverable — "let's get started / dive in / get
+# into it / begin" open a discussion, they aren't assignable tasks. Intransitive,
+# so "let's dive into the Q3 numbers" (an object) is deliberately NOT matched.
+_FILLER = re.compile(
+    rf"\blet{_AP}s (get into it|dive\s+(right\s+|on\s+)*in|get started|begin)\b",
+    re.IGNORECASE)
 _DUE = re.compile(
     r"\b(by|before|on|due)\s+"
     r"(today|tomorrow|tonight|monday|tuesday|wednesday|thursday|friday|saturday|sunday|"
@@ -339,6 +345,8 @@ def _is_actionable(sent: str) -> bool:
         return False                       # "I'll say/admit/argue …" is talk, not a task
     if _TRANSITION.search(s):
         return False                       # "let's go to the next clip" is a transition
+    if _FILLER.search(s):
+        return False                       # "let's get started / dive in" opens talk, not a task
     if len(s.split()) < 4:
         return False                       # "Let's see." / "I'll check." fragments
     if _HEDGE.search(s) and not (_STRONG_COMMIT.search(s) or _DUE.search(s)):

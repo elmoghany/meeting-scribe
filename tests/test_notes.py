@@ -183,6 +183,12 @@ def test_action_items_reject_speech_acts_but_keep_real_tasks():
     assert notes.extract_action_items([_seg("Let's go to the next clip now.")]) == []
     assert notes.extract_action_items([_seg("Let's go back to the budget topic.")]) == []
     assert notes.extract_action_items([_seg("Let's go ahead and schedule the review.")])
+    # discussion-starter fillers (no deliverable) are not tasks...
+    for filler in ["Let's get started with the meeting.", "Let's dive right on in now.",
+                   "Okay everyone, let's get into it.", "Let's begin the session."]:
+        assert notes.extract_action_items([_seg(filler)]) == [], f"filler kept: {filler!r}"
+    # ...but an object after the verb keeps it a real task
+    assert notes.extract_action_items([_seg("Let's dive into the Q3 revenue numbers.")])
 
 
 def test_decisions_dont_match_bare_final():
