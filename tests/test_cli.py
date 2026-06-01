@@ -61,6 +61,43 @@ def test_doctor_reports_default_diarizer_deps_and_ffmpeg(capsys):
     assert "disk_free" in out and "GB" in out            # disk space reported (recording needs it)
 
 
+def test_process_resolves_directory_vs_meeting_id(tmp_path, monkeypatch):
+    # _cmd_process: a directory target uses the dir as audio_dir and its name as
+    # the id; a bare id resolves audio_dir under recordings_dir. Swapping these
+    # would make `process` look in the wrong place.
+    from types import SimpleNamespace
+
+    from app import batch, config
+    cap = []
+    monkeypatch.setattr(batch, "run_batch", lambda mid, audio_dir: cap.append((mid, audio_dir)) or {})
+
+    a_dir = tmp_path / "20260101-meeting-x"
+    a_dir.mkdir()
+    cli._cmd_process(SimpleNamespace(target=str(a_dir)))
+    assert cap[-1] == ("20260101-meeting-x", str(a_dir))     # dir -> name + itself
+
+    monkeypatch.setenv("MEETINGSCRIBE_DATA_DIR", str(tmp_path))
+    config.get_settings.cache_clear()
+    try:
+        cli._cmd_process(SimpleNamespace(target="just-an-id"))
+        mid, audio_dir = cap[-1]
+        assert mid == "just-an-id"
+        assert audio_dir.endswith("just-an-id") and "recordings" in audio_dir   # under recordings_dir
+    finally:
+        config.get_settings.cache_clear()
+
+
+def test_devices_command_prints_json(capsys, monkeypatch):
+    from types import SimpleNamespace
+
+    from app import capture
+    monkeypatch.setattr(capture, "list_devices",
+                        lambda: [{"index": 0, "name": "Mic"}, {"index": 1, "name": "Loopback"}])
+    cli._cmd_devices(SimpleNamespace())
+    out = capsys.readouterr().out
+    assert '"name": "Mic"' in out and '"name": "Loopback"' in out   # JSON-rendered device list
+
+
 def test_search_command_prints_hits(capsys):
     # exercises the real _cmd_search body end-to-end (db.search + formatted print)
     db.reset_connection()
