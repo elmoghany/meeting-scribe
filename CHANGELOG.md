@@ -59,6 +59,16 @@ All notable changes to MeetingScribe are documented here. Format loosely follows
 - **Multi-speaker verification harness** (`scripts/verify_multispeaker.py`) —
   scores ASR WER + diarization speaker-count accuracy; the tool that surfaced the
   diarization bug above.
+- **Task-driven review** — meetings show an open-action-item count badge and a
+  "needs follow-up" filter.
+- **Jump to source** — global search and ask-all citations scroll to and flash
+  the matching line; results are keyboard-accessible.
+- **Friendly export filenames** — downloads use the meeting title
+  (`Q3-Planning.md`) instead of the internal id.
+- Clearer states — a "processing…" hint while a meeting is transcribing, and an
+  "audio removed" note after freeing a recording's WAVs.
+- `meetingscribe doctor` now also checks the DB (opens + migrates), free disk
+  space, and the key-free diarizer deps + ffmpeg.
 
 ## [0.1.0]
 - Initial local meeting-notes pipeline: mic + system-audio capture,
