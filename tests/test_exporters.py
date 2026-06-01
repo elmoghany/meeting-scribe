@@ -22,6 +22,18 @@ def test_vtt_format():
     assert "<v Me>Hello everyone." in vtt
 
 
+def test_srt_splits_long_cues_for_readability():
+    from app.models import Segment as Seg
+    # one 24s paragraph segment -> should become several short subtitle cues
+    long = [Seg(start=0, end=24, text=" ".join(f"w{i}" for i in range(30)),
+                speaker="Me", source="batch")]
+    srt = exporters.to_srt(long)
+    # multiple numbered cues, each spanning well under the 24s block
+    assert "1\n" in srt and "2\n" in srt and "3\n" in srt
+    # the last cue ends at the segment end; first starts at 0
+    assert "00:00:00,000 -->" in srt and "--> 00:00:24,000" in srt
+
+
 def test_txt_format():
     txt = exporters.to_txt(_segs())
     assert "[00:00] Me: Hello everyone." in txt

@@ -10,6 +10,19 @@ import json
 import re
 
 from ..models import ActionItem, Meeting, Segment, Summary
+from .assemble import _split_long
+
+# Subtitle cues should show only a few seconds of text at a time; a 30s
+# paragraph cue is unreadable on screen. Split long segments into ~this-long
+# cues for SRT/VTT (timing within a segment is approximate but readability wins).
+_CUE_MAX_SEC = 8.0
+
+
+def _cues(segments: list[Segment]) -> list[Segment]:
+    out: list[Segment] = []
+    for s in sorted(segments, key=lambda x: x.start):
+        out.extend(_split_long(s, _CUE_MAX_SEC))
+    return out
 
 
 def _ts(seconds: float, sep: str = ",") -> str:
@@ -27,7 +40,7 @@ def _ts(seconds: float, sep: str = ",") -> str:
 def to_srt(segments: list[Segment]) -> str:
     """SubRip subtitles, speaker-prefixed."""
     lines = []
-    for i, s in enumerate(sorted(segments, key=lambda x: x.start), 1):
+    for i, s in enumerate(_cues(segments), 1):
         lines.append(str(i))
         lines.append(f"{_ts(s.start)} --> {_ts(s.end)}")
         who = f"{s.speaker}: " if s.speaker and s.speaker != "Unknown" else ""
@@ -39,7 +52,7 @@ def to_srt(segments: list[Segment]) -> str:
 def to_vtt(segments: list[Segment]) -> str:
     """WebVTT subtitles (browser-native, used by the audio player)."""
     out = ["WEBVTT", ""]
-    for s in sorted(segments, key=lambda x: x.start):
+    for s in _cues(segments):
         out.append(f"{_ts(s.start, '.')} --> {_ts(s.end, '.')}")
         who = f"<v {s.speaker}>" if s.speaker and s.speaker != "Unknown" else ""
         out.append(f"{who}{s.text.strip()}")
