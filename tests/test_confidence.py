@@ -29,6 +29,39 @@ def test_transcribe_file_builds_segments(monkeypatch):
     assert segs[1].confidence < segs[0].confidence           # lower logprob -> lower confidence
 
 
+def test_confidence_handles_overflow_and_bad_value():
+    # exp() can overflow for a large logprob, and a non-numeric value raises in
+    # float(); both must degrade to None rather than crash the transcript build.
+    assert _confidence(SimpleNamespace(avg_logprob=1000.0)) is None      # exp overflow
+    assert _confidence(SimpleNamespace(avg_logprob="not-a-number")) is None  # float() error
+
+
+def test_transcribe_window_applies_offset_and_drops_blank(monkeypatch):
+    # the live path: window-relative timestamps get shifted by t_offset, blanks
+    # dropped, and segments tagged source='live'. Model is mocked.
+    import numpy as np
+
+    from app.pipeline import asr
+    from app.pipeline.asr import Transcriber
+
+    fake = [SimpleNamespace(start=0.0, end=1.0, text=" hello ", avg_logprob=-0.2),
+            SimpleNamespace(start=1.0, end=2.0, text="   ", avg_logprob=-0.1),   # blank
+            SimpleNamespace(start=2.0, end=3.0, text="world", avg_logprob=-0.5)]
+
+    class FakeModel:
+        def transcribe(self, audio, **kw):
+            assert audio.dtype == np.float32           # contiguous float32 conversion
+            return iter(fake), SimpleNamespace(language="en")
+
+    monkeypatch.setattr(asr, "_load", lambda *a, **k: FakeModel())
+    segs = Transcriber(model_name="fake").transcribe_window(
+        np.zeros(16000), t_offset=10.0, speaker="Me")
+    assert [s.text for s in segs] == ["hello", "world"]        # blank dropped, trimmed
+    assert segs[0].start == 10.0 and segs[1].start == 12.0     # window offset applied
+    assert all(s.speaker == "Me" and s.source == "live" for s in segs)
+    assert segs[0].confidence is not None
+
+
 def test_vocab_prompt():
     assert vocab_prompt([]) is None
     assert vocab_prompt(["  ", ""]) is None                 # all blank -> None
