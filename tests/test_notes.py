@@ -324,6 +324,53 @@ def test_extractive_backend_summarize_and_chat():
     assert "budget" in ans.lower()
 
 
+def test_chat_no_match_returns_not_found():
+    # a question with no token overlap with the transcript -> explicit "not found"
+    backend = notes.ExtractiveNotes()
+    segs = [_seg("Let's finalize the budget at 50k.", "Sam")]
+    ans = backend.chat("xylophone zebra quokka", segs)
+    assert "couldn't find anything" in ans.lower()
+
+
+def test_too_similar_empty_token_side_returns_false():
+    assert notes._too_similar("", "hello world") is False        # empty side -> not similar
+    assert notes._too_similar("ship the report today",
+                              "ship the report today") is True    # identical -> similar
+
+
+def test_llm_prompt_wraps_transcript():
+    p = notes._llm_prompt("ALPHA BETA")
+    assert "ALPHA BETA" in p and "JSON" in p                      # transcript embedded + JSON ask
+
+
+def test_decisions_capped_at_five():
+    # seven distinct decisions; the summary keeps at most five
+    transcript = " ".join([
+        "We decided to migrate the database to Postgres next quarter.",
+        "We agreed to launch the beta in March with limited users.",
+        "We chose React for the new dashboard frontend rewrite.",
+        "The annual marketing contract was approved by legal today.",
+        "We're going with vendor Acme for all cloud hosting needs.",
+        "Let's go with the blue color scheme for the rebrand.",
+        "We will go with weekly sprints instead of a biweekly cadence.",
+    ])
+    s = notes.extractive_summary(transcript)
+    assert len(s.decisions) == 5                                  # capped, not all seven
+
+
+def test_get_notes_backend_falls_back_to_extractive_without_gguf(monkeypatch):
+    # llamacpp configured but no model path -> must NOT crash; degrade to extractive
+    from app import config
+    monkeypatch.setenv("MEETINGSCRIBE_LLM_BACKEND", "llamacpp")
+    monkeypatch.delenv("MEETINGSCRIBE_GGUF_PATH", raising=False)
+    config.get_settings.cache_clear()
+    try:
+        backend = notes.get_notes_backend()
+        assert backend.backend == "extractive"                   # graceful fallback
+    finally:
+        config.get_settings.cache_clear()
+
+
 def test_parse_llm_json_falls_back_on_garbage():
     segs = [_seg("I'll do the thing by Monday.", "Sam")]
     summary, items = notes._parse_llm_json("not json at all", segs)
